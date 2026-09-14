@@ -1,0 +1,19 @@
+# Node
+node_modules/
+
+# Build output (produced by `npm run build`; regenerated in CI for Pages)
+dist/
+
+# Python
+__pycache__/
+*.pyc
+src/python/pale_diamond.db
+src/python/pale_diamond.db-*
+.venv/
+
+# Swift
+src/swift/.build/
+
+# OS
+.DS_Store
+Thumbs.db

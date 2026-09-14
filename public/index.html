@@ -1,0 +1,282 @@
+<!doctype html>
+<!--
+  Pale Diamond — a web-hosted AI agent for tasks and automation.
+
+  `data-api-base` is empty here because GitHub Pages serves static files only,
+  so the interface runs in demo mode. Point it at the deployed Python service
+  (src/python) to enable real accounts, subscriptions and model routing.
+-->
+<html lang="en" data-api-base="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#05070f" />
+  <meta name="color-scheme" content="dark" />
+  <title>Pale Diamond — an AI agent for tasks and automation</title>
+  <meta name="description" content="Pale Diamond is a web-hosted AI agent that carries out tasks and automations. Free, Plus, Pro and Mas plans, plus pay-as-you-go credits." />
+
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="preload" as="image" href="assets/hero-diamond.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <!-- Dhurjati is used for the display numerals called for in the brief. -->
+  <link href="https://fonts.googleapis.com/css2?family=Dhurjati&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <!-- Ambient field behind the whole page, so the hero art has somewhere to
+       dissolve into rather than ending on a hard edge. -->
+  <div class="ambient" aria-hidden="true">
+    <span class="ambient-glow ambient-glow-a"></span>
+    <span class="ambient-glow ambient-glow-b"></span>
+    <span class="ambient-grain"></span>
+  </div>
+
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="Pale Diamond home">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Pale Diamond</span>
+    </a>
+
+    <nav class="main-nav" aria-label="Main">
+      <a href="#agent">The agent</a>
+      <a href="#capabilities">Capabilities</a>
+      <a href="#plans">Plans</a>
+      <a href="#security">Security</a>
+    </nav>
+
+    <div class="header-actions">
+      <button type="button" class="ghost-button" id="header-signin">Sign in</button>
+      <button type="button" class="solid-button" id="header-cta">Get started</button>
+
+      <div class="account-chip glass" id="header-account" hidden>
+        <span class="account-avatar" aria-hidden="true"></span>
+        <span class="account-detail">
+          <strong id="account-email">—</strong>
+          <small id="account-plan">FREE</small>
+        </span>
+        <button type="button" class="ghost-button" id="header-signout">Sign out</button>
+      </div>
+    </div>
+
+    <button type="button" class="menu-button" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span>
+    </button>
+  </header>
+
+  <!-- Ad layout from the reference sketch: a black rail either side of the
+       content column, each holding one ad that rests then rotates. -->
+  <aside class="ad-rail ad-rail-left" id="rail-left" aria-label="Advertisement">
+    <span class="ad-label">Ad</span>
+    <div class="ad-viewport"></div>
+  </aside>
+
+  <aside class="ad-rail ad-rail-right" id="rail-right" aria-label="Advertisement">
+    <span class="ad-label">Ad</span>
+    <div class="ad-viewport"></div>
+  </aside>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="hero-art">
+        <!-- The stone: starfield, masked title art, caustics and facet edges,
+             drawn by the Rust / C / C++ modules via src/ts/diamond.ts. -->
+        <canvas id="hero-canvas" aria-hidden="true"></canvas>
+        <h1 class="hero-title">
+          <span class="hero-title-pale">Pale</span>
+          <span class="hero-title-diamond">Diamond</span>
+        </h1>
+      </div>
+
+      <div class="hero-copy" data-reveal>
+        <p class="eyebrow"><span class="dot"></span> Web-hosted AI agent</p>
+        <p class="hero-lede">
+          An agent that carries the task from the first sentence to the finished
+          thing. Ask for research, hand over the repetitive work, and keep the
+          thread in one private place.
+        </p>
+
+        <div class="hero-actions">
+          <button type="button" class="solid-button large" data-open-auth="signup">Create your workspace</button>
+          <a class="ghost-button large" href="#plans">See the plans</a>
+        </div>
+
+        <dl class="hero-stats">
+          <div><dt>Currently routing</dt><dd id="model-class">Open-weight models</dd></div>
+          <div><dt>Plans from</dt><dd>$0 / month</dd></div>
+          <div><dt>Your key</dt><dd>Never exposed</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="section agent-section" id="agent">
+      <p class="section-label" data-reveal>01 — The agent</p>
+      <div class="split" data-reveal>
+        <h2>Tasks in.<br /><em>Outcomes out.</em></h2>
+        <div class="split-body">
+          <p>
+            Pale Diamond holds the context so you do not have to restate it.
+            Give it a goal and it plans the steps, runs them, and shows its work
+            at each stage — with you able to stop or steer at any point.
+          </p>
+          <a class="text-link" href="#capabilities">What it can do</a>
+        </div>
+      </div>
+
+      <div class="flow glass" data-reveal>
+        <!-- The request path from the architecture sketch. -->
+        <ol class="flow-steps">
+          <li><span class="flow-index">01</span><strong>You</strong><p>Describe the task in plain language.</p></li>
+          <li><span class="flow-index">02</span><strong>Subscription</strong><p>Your plan sets the model class and limits.</p></li>
+          <li><span class="flow-index">03</span><strong>Routing API</strong><p>The server-side key reaches OpenRouter. It never touches the browser.</p></li>
+          <li><span class="flow-index">04</span><strong>Security check</strong><p>The result is validated before it comes back to you.</p></li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section capabilities" id="capabilities">
+      <p class="section-label" data-reveal>02 — Capabilities</p>
+      <h2 class="section-title" data-reveal>Built for the work<br /><em>that takes more than a chat box.</em></h2>
+
+      <div class="capability-grid">
+        <article class="capability glass" data-reveal>
+          <span class="capability-index">01</span>
+          <h3>Research that keeps up</h3>
+          <p>Search, read and synthesise across the web and your connected tools, with the sources kept attached to the answer.</p>
+        </article>
+        <article class="capability glass" data-reveal>
+          <span class="capability-index">02</span>
+          <h3>Automation with judgement</h3>
+          <p>Turn the work you repeat into a reliable routine. It runs on a schedule and checks in when a decision is genuinely yours.</p>
+        </article>
+        <article class="capability glass" data-reveal>
+          <span class="capability-index">03</span>
+          <h3>A workspace that remembers</h3>
+          <p>Every thread, file and result in one private place, so picking a task back up costs nothing.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section plans" id="plans">
+      <p class="section-label" data-reveal>03 — Plans</p>
+      <div class="plans-head" data-reveal>
+        <h2 class="section-title">Start free.<br /><em>Scale when it earns it.</em></h2>
+        <div class="billing-toggle glass" role="group" aria-label="Billing period">
+          <button type="button" data-billing="monthly" class="is-active">Monthly</button>
+          <button type="button" data-billing="yearly">Yearly <small>−20%</small></button>
+        </div>
+      </div>
+
+      <div class="plan-grid" id="plan-grid" data-reveal><!-- rendered by src/ts/ui.ts --></div>
+
+      <div class="paygo glass" data-reveal>
+        <div>
+          <strong>Pay as you go</strong>
+          <p>Need more runway on a free account? Add credits and use them whenever. They do not expire.</p>
+        </div>
+        <button type="button" class="solid-button" data-open-paygo>Add credits</button>
+      </div>
+    </section>
+
+    <section class="section security" id="security">
+      <p class="section-label" data-reveal>04 — Security</p>
+      <div class="split" data-reveal>
+        <h2>Your key stays<br /><em>on our side of the wall.</em></h2>
+        <div class="split-body">
+          <p>
+            The API key that reaches OpenRouter lives on the server and is never
+            sent to the browser, never rendered into the page, and never
+            recoverable from a session. Requests are signed, checked and rate
+            limited against your plan before they leave.
+          </p>
+          <p>
+            Half of every payment funds that routing key. The other half is the
+            company's. That split is applied at the moment of payment and
+            recorded in a ledger you can audit.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="closing" data-reveal>
+      <div class="closing-stone" aria-hidden="true"></div>
+      <h2>Make it count.</h2>
+      <p>The workspace for people who want the tool to be as considered as the work.</p>
+      <button type="button" class="solid-button large" data-open-auth="signup">Create your workspace</button>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <a class="brand" href="#top">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Pale Diamond</span>
+    </a>
+    <p>© 2026 Pale Diamond</p>
+    <nav aria-label="Footer">
+      <a href="#security">Privacy</a>
+      <a href="#plans">Plans</a>
+      <a href="#top">Back to top</a>
+    </nav>
+  </footer>
+
+  <!-- Grey pop-up slot from the sketch. Dismissible with the X. -->
+  <aside class="ad-popup" id="ad-popup" aria-hidden="true" aria-label="Advertisement">
+    <div class="ad-popup-card">
+      <div class="ad-popup-head">
+        <span class="ad-label">Sponsored</span>
+        <button type="button" class="ad-popup-close" aria-label="Dismiss this ad">&times;</button>
+      </div>
+      <div class="ad-viewport"></div>
+    </div>
+  </aside>
+
+  <div class="toast" role="status" aria-live="polite"></div>
+
+  <div class="dialog" id="auth-dialog" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+    <div class="dialog-card glass">
+      <button type="button" class="dialog-close" data-close-dialog aria-label="Close">&times;</button>
+      <p class="dialog-kicker">Pale Diamond</p>
+      <h2 id="auth-title">Create your workspace</h2>
+      <p class="dialog-subtitle" id="auth-subtitle">A private space for your work. No card required.</p>
+
+      <form id="auth-form" novalidate>
+        <label for="auth-email">Email address</label>
+        <input type="email" id="auth-email" name="email" autocomplete="email" required placeholder="you@example.com" />
+
+        <label for="auth-password">Password</label>
+        <input type="password" id="auth-password" name="password" autocomplete="new-password" required placeholder="At least 8 characters" />
+
+        <p class="form-error" id="auth-error" role="alert"></p>
+        <button type="submit" class="solid-button full" id="auth-submit">Create account</button>
+      </form>
+
+      <p class="dialog-switch">
+        <span id="auth-switch-copy">Already have an account?</span>
+        <button type="button" id="auth-switch">Sign in</button>
+      </p>
+
+      <p class="dialog-divider"><span>or continue with</span></p>
+      <div class="provider-row">
+        <button type="button" data-provider="Google">Google</button>
+        <button type="button" data-provider="Apple">Apple</button>
+        <button type="button" data-provider="GitHub">GitHub</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="dialog" id="paygo-dialog" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="paygo-title">
+    <div class="dialog-card glass">
+      <button type="button" class="dialog-close" data-close-dialog aria-label="Close">&times;</button>
+      <p class="dialog-kicker">Usage</p>
+      <h2 id="paygo-title">Add credits</h2>
+      <p class="dialog-subtitle">Top up whenever you need more runway. Credits do not expire.</p>
+      <div class="credit-options" id="credit-options"><!-- rendered by src/ts/ui.ts --></div>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

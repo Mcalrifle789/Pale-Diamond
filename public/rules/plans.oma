@@ -1,0 +1,62 @@
+# plans.oma — Omaris policy for entitlements and model routing.
+#
+# The API key that talks to OpenRouter lives only on the Python backend and is
+# never exposed here. These rules decide which *class* of model the backend is
+# asked for; the backend resolves the actual key.
+
+rule baseline {
+  set maxDailyRuns 25
+  set concurrency 1
+  deny "automations"
+  deny "shared-workspace"
+}
+
+# Free accounts are switched to open-weight models, per the brief.
+rule free_uses_open_weight {
+  when plan is "free"
+  set modelClass "open-weight"
+  route to "openrouter/open-weight-pool"
+  grant "chat"
+}
+
+rule plus {
+  when plan is "plus"
+  set modelClass "premium"
+  set maxDailyRuns 500
+  set concurrency 3
+  route to "openrouter/premium-pool"
+  grant "chat"
+  grant "priority-queue"
+}
+
+rule pro {
+  when plan is "pro"
+  set modelClass "premium"
+  set maxDailyRuns 2000
+  set concurrency 6
+  route to "openrouter/premium-pool"
+  grant "chat"
+  grant "priority-queue"
+  grant "automations"
+}
+
+rule mas {
+  when plan is "mas"
+  set modelClass "premium"
+  set maxDailyRuns 10000
+  set concurrency 12
+  route to "openrouter/premium-pool"
+  grant "chat"
+  grant "priority-queue"
+  grant "automations"
+  grant "shared-workspace"
+}
+
+# Pay-as-you-go credits lift a free account onto premium models while the
+# balance lasts, without changing the subscription tier.
+rule credits_unlock_premium {
+  when plan is "free" and credits > 0
+  set modelClass "premium"
+  route to "openrouter/premium-pool"
+  grant "chat"
+}

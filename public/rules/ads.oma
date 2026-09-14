@@ -1,0 +1,53 @@
+# ads.oma — Omaris policy for the Pale Diamond ad surface.
+#
+# Layout comes from the reference sketch: two black rail slots (left and right
+# of the content column, $400/mo each) and one grey pop-up slot ($350/mo) that
+# the visitor can dismiss with the X.
+#
+# Evaluated against: plan, credits, signedIn, reducedMotion, viewport.
+
+rule rail_defaults {
+  set railDwellMs 9000
+  set railTransition "fade"
+  set railRate 400
+  show slot "rail-left"
+  show slot "rail-right"
+}
+
+rule popup_defaults {
+  set popupDelayMs 12000
+  set popupRate 350
+  set popupDismissible true
+  show slot "popup"
+}
+
+# Paid plans buy a quieter product: no interruptive pop-up at all.
+rule paid_plans_have_no_popup {
+  when plan in ["plus", "pro", "mas"]
+  hide slot "popup"
+  deny "interstitial"
+}
+
+# The top tier removes every ad surface.
+rule mas_is_ad_free {
+  when plan is "mas"
+  hide slot "rail-left"
+  hide slot "rail-right"
+  hide slot "popup"
+}
+
+# Narrow viewports have no room for side rails; the sketch only calls for them
+# beside a full-width content column.
+rule no_rails_on_small_screens {
+  when viewport < 1180
+  hide slot "rail-left"
+  hide slot "rail-right"
+  set popupDelayMs 18000
+}
+
+# Respect the OS "reduce motion" setting: hold each ad instead of rotating.
+rule honour_reduced_motion {
+  when reducedMotion is true
+  set railTransition "none"
+  set railDwellMs 30000
+}
