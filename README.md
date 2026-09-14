@@ -1,6 +1,12 @@
-﻿# Pale Diamond
+# Pale Diamond
 
 A calm, diamond-inspired AI workspace landing page and front-end product prototype.
+
+## Live preview
+
+After the GitHub Pages workflow completes, the site is available at:
+
+https://mcalrifle789.github.io/Pale-Diamond/
 
 ## Included
 
@@ -12,10 +18,11 @@ A calm, diamond-inspired AI workspace landing page and front-end product prototy
 - Provider sign-in placeholders
 - Dismissible advertising showcase
 - Responsive mobile navigation
+- GitHub Pages deployment through `.github/workflows/deploy-pages.yml`
 
 ## Run locally
 
-This is a static front-end prototype. Open `index.html` directly, or serve the folder with any static server:
+This is a static front-end prototype written with HTML, CSS, and JavaScript. It can be opened directly, or served with Python:
 
 ```bash
 python -m http.server 8000
