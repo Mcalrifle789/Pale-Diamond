@@ -12,11 +12,11 @@
 
 /* Masked logo image — replaces the wordmark, blended into the dark UI */
 .brand{gap:0}
-.brand-logo{height:30px;width:auto;display:block;mix-blend-mode:screen;filter:drop-shadow(0 0 9px rgba(150,180,255,.28));transition:filter .3s,transform .3s}
-.brand:hover .brand-logo{filter:drop-shadow(0 0 15px rgba(175,200,255,.55));transform:translateY(-1px)}
-.footer-logo{height:22px;opacity:.92}
-@media (max-width:900px){.brand-logo{height:26px}}
-@media (max-width:560px){.brand-logo{height:21px}.footer-logo{height:18px}}
+.brand-logo{height:40px;width:auto;display:block;filter:drop-shadow(0 0 12px rgba(150,180,255,.35));transition:filter .3s,transform .3s}
+.brand:hover .brand-logo{filter:drop-shadow(0 0 18px rgba(180,205,255,.6));transform:translateY(-1px)}
+.footer-logo{height:28px}
+@media (max-width:900px){.brand-logo{height:34px}}
+@media (max-width:560px){.brand-logo{height:27px}.footer-logo{height:22px}}
 
 /* Glistening diamonds — tiny sparkles scattered across the page */
 .sparkle-field{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
