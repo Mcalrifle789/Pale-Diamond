@@ -98,3 +98,25 @@ document.querySelector('.ad-window-top button')?.addEventListener('click', event
 document.querySelectorAll('a[href^="#"]').forEach(link => link.addEventListener('click', () => {
   document.querySelector('.main-nav')?.classList.remove('mobile-open');
 }));
+
+// Glistening diamonds: scatter tiny twinkling sparkles across the whole page.
+(function () {
+  const shell = document.querySelector('.page-shell');
+  if (!shell) return;
+  const field = document.createElement('div');
+  field.className = 'sparkle-field';
+  field.setAttribute('aria-hidden', 'true');
+  const count = window.innerWidth < 640 ? 34 : 64;
+  for (let i = 0; i < count; i++) {
+    const s = document.createElement('span');
+    s.className = 'sparkle';
+    s.style.setProperty('--s', (Math.random() * 4 + 2).toFixed(1) + 'px');
+    s.style.left = (Math.random() * 100).toFixed(2) + '%';
+    s.style.top = (Math.random() * 100).toFixed(2) + '%';
+    s.style.setProperty('--dur', (Math.random() * 4 + 3).toFixed(2) + 's');
+    s.style.setProperty('--delay', (Math.random() * 7).toFixed(2) + 's');
+    s.style.setProperty('--peak', (Math.random() * 0.45 + 0.5).toFixed(2));
+    field.appendChild(s);
+  }
+  shell.insertBefore(field, shell.firstChild);
+})();
