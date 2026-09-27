@@ -40,6 +40,7 @@ function backendConfigured() { return !!apiBase() || !location.origin.includes('
 
 /* ---------- account (shared with the main site) ---------- */
 function accounts() { return store.get('pd_accounts', {}); }
+function saveAccounts(a) { store.set('pd_accounts', a); }
 function currentEmail() { return store.get('pd_session', null); }
 function currentUser() { const e = currentEmail(); return e ? accounts()[e] : null; }
 function refreshAccountUI() {
