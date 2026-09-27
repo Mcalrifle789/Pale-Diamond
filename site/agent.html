@@ -55,8 +55,13 @@
         <div class="ag-chat-area" id="ag-chat-area">
           <div class="ag-welcome" id="ag-welcome">
             <img src="pale-diamond-gem.png" alt="" draggable="false" />
-            <p>Ask anything. I read what you mean, think it through, and answer with clarity — then help you act on it.</p>
-            <div class="ag-chips">
+            <div class="ag-lock glass" id="ag-lock" hidden>
+              <strong>THE AGENT IS MEMBERS-ONLY</strong>
+              <p>Sign in to wake Pale Diamond. Your conversations, images and files stay in your private facet.</p>
+              <button class="primary-button magnetic" id="ag-lock-signin">Sign in / Create account <span>↗</span></button>
+            </div>
+            <p id="ag-welcome-copy">Ask anything. I read what you mean, think it through, and answer with clarity — then help you act on it.</p>
+            <div class="ag-chips" id="ag-chips">
               <button data-chip="Make an image of a pale blue crystal floating in a marble hall">✦ Make an image</button>
               <button data-chip="What's the weather forecast for New York?">☀ Weather</button>
               <button data-chip="Make a presentation about our Q4 launch plan">📑 Presentation</button>
@@ -174,6 +179,9 @@
     <img id="ag-lb-img" alt="Generated image" />
     <a class="ag-ghost-button" id="ag-lb-download" download="pale-diamond-image.png">⬇ Download image</a>
   </div>
+
+  <!-- ============ AUTH MODAL (agent page) ============ -->
+  <div class="modal-backdrop" id="ag-auth-modal" aria-hidden="true"><div class="modal-card glass"><button class="modal-close" data-close-modal aria-label="Close">×</button><div class="modal-kicker">PALE DIAMOND / <span id="ag-modal-mode-label">WELCOME</span></div><h2 id="ag-modal-title">Make room for<br /><em>better work.</em></h2><p id="ag-modal-subtitle">Create your private facet in a few seconds.</p><form id="ag-auth-form"><label>Email address<input type="email" name="email" placeholder="you@yourstudio.com" required /></label><label>Password<input type="password" name="password" placeholder="••••••••" required minlength="6" /></label><button class="primary-button full magnetic" type="submit" id="ag-auth-submit">Create facet <span>↗</span></button></form><div class="modal-switch"><span id="ag-modal-switch-copy">Already have an account?</span><button type="button" id="ag-modal-switch-button">Sign in</button></div><p class="modal-note">The agent works only when you're signed in. On creating an account you're issued a private API key — never shown to you — that connects Claude, OpenAI, Grok, Kimi, GLM, NVIDIA &amp; more via OpenRouter.</p></div></div>
 
   <!-- ============ PROFILE DROPDOWN MENU (agent page) ============ -->
   <div class="profile-menu glass" id="profile-menu" hidden>

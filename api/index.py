@@ -225,8 +225,11 @@ async def _demo_stream(messages: list):
 
 
 @app.post("/api/chat")
-async def chat(req: ChatRequest):
+async def chat(req: ChatRequest, authorization: str | None = Header(default=None)):
     key = openrouter_key()
+    # The agent is members-only: real (paid-key) relay requires a signed-in session.
+    if key:
+        _user_for_token(authorization)
     messages = await _augment_with_pages(req.messages)
     payload = {
         "model": req.model or DEFAULT_MODEL,
@@ -296,10 +299,12 @@ def _demo_image(prompt: str) -> str:
 
 
 @app.post("/api/image")
-async def image(req: ImageRequest):
+async def image(req: ImageRequest, authorization: str | None = Header(default=None)):
     key = openrouter_key()
     if not key:
         return {"demo": True, "images": [_demo_image(req.prompt)], "text": "Demo render."}
+    # Members-only: image generation burns credits, so require a signed-in session.
+    _user_for_token(authorization)
 
     headers = openrouter_headers()
     payload = {

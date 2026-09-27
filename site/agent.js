@@ -29,7 +29,10 @@ function apiBase() {
 }
 function apiUrl(path) { return `${apiBase()}/api/${path}`; }
 async function apiFetch(path, options = {}) {
-  const res = await fetch(apiUrl(path), { headers: { 'Content-Type': 'application/json' }, ...options });
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  const token = store.get('pd_auth_token', null);
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(apiUrl(path), { ...options, headers });
   if (!res.ok) throw new Error(`API ${res.status}`);
   return res.json();
 }
@@ -46,6 +49,125 @@ function refreshAccountUI() {
   $('#ag-account-stats').textContent = user
     ? `${user.tier} plan · member since ${new Date(user.created).toLocaleDateString()} · ${user.credits} credits used`
     : 'Not signed in — you are browsing as a guest.';
+  updateAgentLock();
+}
+
+/* ============================================================
+   SIGN-IN GATE — the agent only works when signed in
+   ============================================================ */
+function updateAgentLock() {
+  const locked = !currentUser();
+  const lock = $('#ag-lock');
+  if (lock) lock.hidden = !locked;
+  const copy = $('#ag-welcome-copy'); if (copy) copy.hidden = locked;
+  const chips = $('#ag-chips'); if (chips) chips.style.display = locked ? 'none' : '';
+  const input = $('#ag-input'); if (input) input.disabled = locked;
+  const send = $('.ag-send'); if (send) send.disabled = locked;
+  $('#ag-plus')?.setAttribute('disabled', locked ? '' : '');
+  if (locked) $('#ag-welcome').hidden = false;
+}
+$('#ag-lock-signin')?.addEventListener('click', () => openAuth('signup'));
+
+/* ---------- auth modal (register / sign in, server first) ---------- */
+let authMode = 'signup';
+function setAuthMode(mode) {
+  authMode = mode;
+  const signin = mode === 'signin';
+  $('#ag-modal-mode-label').textContent = signin ? 'SIGN IN' : 'WELCOME';
+  $('#ag-modal-title').innerHTML = signin ? 'Welcome<br /><em>back.</em>' : 'Make room for<br /><em>better work.</em>';
+  $('#ag-modal-subtitle').textContent = signin ? 'Pick up where you left off.' : 'Create your private facet in a few seconds.';
+  $('#ag-auth-submit').innerHTML = signin ? 'Enter facet <span>↗</span>' : 'Create facet <span>↗</span>';
+  $('#ag-modal-switch-copy').textContent = signin ? 'New to Pale Diamond?' : 'Already have an account?';
+  $('#ag-modal-switch-button').textContent = signin ? 'Create an account' : 'Sign in';
+}
+function openAuth(mode = 'signup') {
+  setAuthMode(mode);
+  openModal('#ag-auth-modal');
+  setTimeout(() => $('#ag-auth-form')?.querySelector('input')?.focus(), 100);
+}
+$('#ag-modal-switch-button')?.addEventListener('click', () => openAuth(authMode === 'signup' ? 'signin' : 'signup'));
+
+$('#ag-auth-form')?.addEventListener('submit', async e => {
+  e.preventDefault();
+  const data = new FormData(e.target);
+  const email = String(data.get('email')).trim().toLowerCase();
+  const password = String(data.get('password'));
+  e.target.reset();
+
+  if (authMode === 'signup') {
+    try {
+      const res = await apiFetch('auth/register', { method: 'POST', body: JSON.stringify({ email, password }) });
+      saveServerAccount(email, password, res.token, res.user);
+      store.set('pd_session', email);
+      showToast('Your private facet is ready — the agent is awake.');
+      closeModal($('#ag-auth-modal'));
+      refreshAccountUI();
+      return;
+    } catch (err) {
+      if (String(err.message).includes('409')) return showToast('That account already exists — try signing in.');
+      // backend unreachable → local demo account
+    }
+    const acc = accounts();
+    if (acc[email]) return showToast('That account already exists — try signing in.');
+    acc[email] = { email, password, created: new Date().toISOString(), tier: 'Free', credits: 0, apiKey: 'pdk_' + Math.random().toString(36).slice(2, 10).toUpperCase() };
+    saveAccounts(acc);
+    store.set('pd_session', email);
+    showToast('Your private facet is ready (offline mode).');
+    closeModal($('#ag-auth-modal'));
+    refreshAccountUI();
+  } else {
+    try {
+      const res = await apiFetch('auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+      saveServerAccount(email, password, res.token, res.user);
+      store.set('pd_session', email);
+      showToast(`Welcome back, ${email.split('@')[0]}. The agent is awake.`);
+      closeModal($('#ag-auth-modal'));
+      refreshAccountUI();
+      return;
+    } catch (err) {
+      if (String(err.message).includes('401')) {
+        // Not on the server yet — migrate an offline account if credentials match locally.
+        const acc = accounts();
+        if (acc[email] && acc[email].password === password) {
+          try {
+            const res = await apiFetch('auth/register', { method: 'POST', body: JSON.stringify({ email, password }) });
+            saveServerAccount(email, password, res.token, res.user);
+            store.set('pd_session', email);
+            showToast('Account migrated to the database. Welcome back.');
+            closeModal($('#ag-auth-modal'));
+            refreshAccountUI();
+            return;
+          } catch (err2) {
+            if (String(err2.message).includes('409')) return showToast('Email or password not recognized.');
+          }
+        }
+        return showToast('Email or password not recognized.');
+      }
+      // backend unreachable → local login
+    }
+    const acc = accounts();
+    if (!acc[email] || acc[email].password !== password) return showToast('Email or password not recognized.');
+    store.set('pd_session', email);
+    showToast(`Welcome back, ${email.split('@')[0]}. (Offline mode)`);
+    closeModal($('#ag-auth-modal'));
+    refreshAccountUI();
+  }
+});
+
+function saveServerAccount(email, password, token, u) {
+  store.set('pd_auth_token', token);
+  const acc = accounts();
+  acc[email] = {
+    ...(acc[email] || { apiKey: 'pdk_' + Math.random().toString(36).slice(2, 10).toUpperCase(), models: ['Nano Banana Pro', 'Seedance 2.5'] }),
+    email,
+    password,
+    created: u.createdAt || acc[email]?.created || new Date().toISOString(),
+    tier: u.plan || 'Free',
+    credits: u.credits ?? 0,
+    subscribedAt: u.subscribedAt || acc[email]?.subscribedAt || null,
+    nextDue: u.nextDue || acc[email]?.nextDue || null,
+  };
+  saveAccounts(acc);
 }
 $('#ag-account')?.addEventListener('click', e => { e.stopPropagation(); toggleProfileMenu(e.currentTarget); });
 
@@ -320,6 +442,8 @@ function renderAttachments() {
 }
 
 async function addFiles(files) {
+  if (!files.length) return;
+  if (!currentUser()) { openAuth('signup'); showToast('Sign in to upload files.'); return; }
   for (const f of files) {
     try {
       if (f.type.startsWith('image/')) {
@@ -393,6 +517,7 @@ function outputIntent(text) {
 /* ---------- send pipeline ---------- */
 $('#ag-form')?.addEventListener('submit', async e => {
   e.preventDefault();
+  if (!currentUser()) { openAuth('signup'); showToast('Sign in to use the agent.'); return; }
   const input = $('#ag-input');
   const text = input.value.trim();
   if (!text || sendBusy) return;
@@ -457,9 +582,12 @@ async function chatFlow(userText) {
 }
 
 async function streamChat(payload, onDelta) {
+  const headers = { 'Content-Type': 'application/json' };
+  const token = store.get('pd_auth_token', null);
+  if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(apiUrl('chat'), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ ...payload, stream: true }),
   });
   if (!res.ok) throw new Error(`API ${res.status}`);

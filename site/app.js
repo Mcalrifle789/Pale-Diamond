@@ -27,7 +27,10 @@ function apiBase() {
 }
 function apiUrl(path) { return `${apiBase()}/api/${path}`; }
 async function apiFetch(path, options = {}) {
-  const res = await fetch(apiUrl(path), { headers: { 'Content-Type': 'application/json' }, ...options });
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  const token = store.get('pd_auth_token', null);
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(apiUrl(path), { ...options, headers });
   if (!res.ok) throw new Error(`API ${res.status}`);
   return res.json();
 }
@@ -184,7 +187,24 @@ $('#auth-form').addEventListener('submit', async e => {
         return;
       }
     } catch (err) {
-      if (String(err.message).includes('401')) return showToast('Email or password not recognized.');
+      if (String(err.message).includes('401')) {
+        // Not on the server yet — migrate an offline account if credentials match locally.
+        const acc = accounts();
+        if (acc[email] && acc[email].password === password) {
+          try {
+            const res = await apiFetch('auth/register', { method: 'POST', body: JSON.stringify({ email, password }) });
+            saveServerAccount(email, password, res.token, res.user);
+            store.set('pd_session', email);
+            showToast('Account migrated to the database. Welcome back.');
+            closeModal(authModal);
+            refreshAuthUI();
+            return;
+          } catch (err2) {
+            if (String(err2.message).includes('409')) return showToast('Email or password not recognized.');
+          }
+        }
+        return showToast('Email or password not recognized.');
+      }
       // backend unreachable → local login below
     }
     const acc = accounts();
@@ -520,6 +540,7 @@ $$('[data-credits]').forEach(b => b.addEventListener('click', () => {
 /* ============ AGENT (pop-up preview + full agent page) ============ */
 const agent = $('#agent');
 function openAgent() {
+  if (!currentUser()) { openAuth('signin'); showToast('Sign in to use the agent.'); return; }
   agent.classList.add('open', 'fade-in');
   agent.setAttribute('aria-hidden', 'false');
   setTimeout(() => { agent.classList.remove('fade-in'); $('#agent-input')?.focus(); }, 720);
@@ -599,6 +620,7 @@ function agentReply(input) {
 
 $('#agent-form')?.addEventListener('submit', e => {
   e.preventDefault();
+  if (!currentUser()) { closeAgent(); openAuth('signin'); showToast('Sign in to use the agent.'); return; }
   const input = $('#agent-input');
   const text = input.value.trim();
   if (!text) return;

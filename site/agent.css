@@ -47,6 +47,15 @@ html[data-theme="light"] .ag-search{background:rgba(255,255,255,.7)}
 .ag-welcome img{width:86px;filter:drop-shadow(0 0 26px rgba(150,185,255,.55));animation:ag-gem-bob 4s ease-in-out infinite}
 @keyframes ag-gem-bob{0%,100%{transform:translateY(-4px)}50%{transform:translateY(5px)}}
 .ag-welcome p{color:var(--muted);font-size:13.5px;line-height:1.8;margin:6px 0 14px}
+
+/* members-only lock on the welcome screen */
+.ag-lock{margin:10px 0 14px;padding:22px 26px;border-radius:16px;display:flex;flex-direction:column;align-items:center;gap:10px;max-width:380px}
+.ag-lock[hidden]{display:none}
+.ag-lock strong{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.24em;color:var(--accent)}
+.ag-lock p{color:var(--muted);font-size:12px;line-height:1.7;margin:0}
+.ag-input-bar input[type="text"]:disabled{opacity:.4}
+.ag-input-bar .ag-plus[disabled],.ag-input-bar .ag-send:disabled{opacity:.4}
+html[data-theme="light"] .ag-lock strong{color:var(--accent)}
 .ag-chips{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 .ag-chips button{border:1px solid var(--glass-brd);border-radius:20px;padding:9px 15px;font-size:11px;color:var(--soft);background:rgba(10,14,26,.4);transition:.2s}
 .ag-chips button:hover{border-color:var(--accent);color:var(--ink);transform:translateY(-2px)}
