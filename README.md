@@ -1,68 +1,111 @@
 # Pale Diamond
 
 A web-hosted AI agent for tasks and automation — a calm, diamond-inspired
-landing page and product front end, with a real backend the interface can be
-pointed at.
+landing page and product front end, backed by a real OpenRouter relay on Vercel.
 
-## Live preview
+## Live site
 
-The GitHub Pages workflow builds the site (`npm run build`) and publishes the
-compiled `dist/` folder. After it completes, the site is available at:
+GitHub Pages publishes the `site/` folder automatically on every push to `main`:
 
 https://mcalrifle789.github.io/Pale-Diamond/
 
+## The agent
+
+`agent.html` is the full agent interface (every "Launch agent" button routes
+there; the landing page keeps its quick pop-up preview, which fades in when
+you click the agent picture in section 04):
+
+- Real AI chat through OpenRouter, streamed live (model picker included)
+- Model catalog fetched from the OpenRouter routers, grouped by provider
+- Image generation with image-capable models — the gem glows and pulses while
+  generating; click to enlarge, download to keep
+- File uploads: + button, drag-and-drop into the chatbox, or paste. Images and
+  text documents (txt/md/csv/json/docx) are read into the conversation
+- File creation: presentations (.pptx), spreadsheets (.xlsx), documents
+  (.docx), diagrams (.svg), datasheets (.json) — built for download
+- Live weather via Open-Meteo — ask "weather in Tokyo"
+- Music player: persistent controls, queue management, search, responsive
+- Conversations, analytics, packages, templates, settings — all local-first
+
 ## Run locally
 
-The front end is compiled from TypeScript, so it must be **built first** — do not
-open `public/index.html` directly (ES modules do not load over `file://`).
+The site is plain static files — serve `site/` with any HTTP server:
 
 ```bash
-npm install
-npm run build      # TypeScript -> dist/, copies assets + Omaris rules
-npm run dev        # build and serve dist/ at http://localhost:4173
+python -m http.server 8090 --directory site
+# open http://localhost:8090
 ```
 
-Then visit `http://localhost:4173`.
+Without a backend configured, every feature runs in demo mode (canned replies,
+placeholder renders) so the interface is fully explorable.
+
+## Backend (Vercel)
+
+The `api/` folder is the serverless backend (deploy the repo to Vercel):
+
+| Endpoint          | Purpose                                                |
+| ----------------- | ------------------------------------------------------ |
+| `POST /api/chat`  | OpenRouter relay — streaming SSE or JSON, page reading |
+| `GET  /api/models`| OpenRouter catalog grouped into provider sections      |
+| `POST /api/image` | Image generation via image-capable models             |
+| `POST /api/checkout` | Stripe Checkout (create) + verification (verify)   |
+| `GET  /api/health`| Status + which services are configured                |
+
+`api/dev_server.py` hosts all endpoints on one origin for local testing:
+
+```bash
+pip install -r requirements.txt
+PYTHONPATH=api uvicorn api.dev_server:app --port 8900
+```
+
+Then set the backend URL in Agent → Settings (or `site/config.js` → `apiBase`).
+
+### Environment variables (Vercel → Settings → Environment Variables)
+
+| Key | Purpose |
+| --- | ------- |
+| `OPENROUTER_API_KEY` | The private Pale Diamond key — never exposed to the browser |
+| `STRIPE_SECRET_KEY`  | Live Stripe secret key — prices are auto-provisioned with lookup keys on first use |
+| `PUBLIC_URL`         | Deployed site origin (Stripe redirects + CORS) |
+
+Optional: `PD_DEFAULT_MODEL`, `PD_IMAGE_MAX_TOKENS`.
+
+### Secrets
+
+No key ever belongs in the repo. `.env` is gitignored; see `.env.example`.
+
+## Advertising
+
+Two premium placements live on the landing page (section 06):
+
+- **Red-Bottom box** — $340 / month
+- **Blue-Ad box** — $400 / month
+
+Companies and individual users request slots via the "Request an ad slot"
+form; Media.net and Google AdSense then serve and rotate the ads automatically
+once `site/config.js` gets the network client IDs.
+
+## Payments
+
+Plan buttons open Stripe Checkout (live keys). On return, the payment is
+verified and the tier attached. Every payment is split 50/50 — half to the
+owner, half funding the account's private API key that routes through
+OpenRouter. Prices auto-provision in Stripe with lookup keys
+(`pd_port_monthly`, `pd_plus_yearly`, ...).
 
 ## Languages & layout
 
-Per the product brief, the codebase spans several languages, each doing a real
-job:
+| Language   | Location            | Role                                             |
+| ---------- | ------------------- | ------------------------------------------------ |
+| JavaScript | `site/`, `api/dev_server.py` | Front end + local composite dev server  |
+| TypeScript | `src/ts/`           | Parallel compiled front end (not deployed)       |
+| Python     | `api/`, `src/python/` | Vercel serverless API + classic FastAPI stack  |
+| Swift      | `src/swift/`        | `RevenueSplit` — authoritative money model       |
+| Rust/C/C++ | `src/rust/`, `src/c/`, `src/cpp/` | Optional WASM renderers            |
+| Omaris     | `public/rules/*.oma`| Entitlement & ad policy files                    |
 
-| Language      | Location            | Role                                              |
-| ------------- | ------------------- | ------------------------------------------------- |
-| TypeScript    | `src/ts/`           | The front-end application (compiled to `dist/js`) |
-| JavaScript    | `scripts/build.mjs` | Build/assembly and local dev server               |
-| Python        | `src/python/`       | Backend API, database, OpenRouter proxy, security |
-| Swift         | `src/swift/`        | `RevenueSplit` — authoritative money model        |
-| Rust          | `src/rust/`         | Caustics renderer (WASM) for the hero             |
-| C             | `src/c/`            | Facet geometry (WASM)                             |
-| C++           | `src/cpp/`          | Starfield background (WASM)                        |
-| Omaris        | `public/rules/*.oma`| Entitlement & model-routing policy                |
+## Production notes
 
-The Rust/C/C++ sources compile to optional WASM modules; when they are absent,
-the TypeScript renderers fall back to a pure-TS path so the site always renders.
-
-## Included
-
-- Responsive landing page with glassmorphism and faceted-diamond visual language
-- Title image that masks into the page, plus diamond-reflection effects
-- Free, Plus ($20), Pro ($45), and Mas ($115) plans, plus pay-as-you-go credits
-- Sign-in / registration flows (backend accounts, or local demo state on Pages)
-- Monthly/yearly billing toggle
-- Rotating rail ads and dismissible pop-up ads (Google Ads slots)
-- Google Tag / Ads identifiers wired in `src/ts/config.ts`
-- GitHub Pages deployment via `.github/workflows/deploy-pages.yml`
-
-## Backend
-
-The static site runs in demo mode by default. To enable real accounts, run the
-Python API (see `src/python/README.md`) and set `data-api-base` on the `<html>`
-element to its URL. The API owns the database and the hidden OpenRouter key; the
-key is never exposed to the browser. Every payment is split 50/50 between the
-owner and API funding — a rule shared by the TypeScript, Python, and Swift code.
-
-## Production work still needed
-
-Wire live Stripe billing, real Google Ads/Tag IDs, and a managed database, and
-lock the API's CORS origin to the deployed site before launch.
+- Set the Vercel env vars above; the site falls back to demo mode without them
+- Point `site/config.js` `apiBase` at the Vercel URL when serving from Pages
+- Rotate any key that was ever shared in a document or chat

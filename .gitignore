@@ -11,6 +11,12 @@ src/python/pale_diamond.db
 src/python/pale_diamond.db-*
 .venv/
 
+# Secrets — never commit keys (Vercel env vars only)
+.env
+.env.*
+!.env.example
+.vercel/
+
 # Swift
 src/swift/.build/
 

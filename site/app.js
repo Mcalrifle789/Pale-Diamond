@@ -19,7 +19,20 @@ function showToast(msg) {
   showToast.t = setTimeout(() => toast.classList.remove('show'), 3200);
 }
 
-/* ============ INTRO: dancing diamond + vortex logo ============ */
+/* ---------- backend API helper ---------- */
+function apiBase() {
+  const cfg = (window.PD_CONFIG && window.PD_CONFIG.apiBase) || '';
+  const saved = store.get('pd_api_base', '');
+  return (saved || cfg || '').replace(/\/+$/, '') || (location.origin.includes('github.io') ? '' : '/api');
+}
+function apiUrl(path) { return `${apiBase()}/api/${path}`; }
+async function apiFetch(path, options = {}) {
+  const res = await fetch(apiUrl(path), { headers: { 'Content-Type': 'application/json' }, ...options });
+  if (!res.ok) throw new Error(`API ${res.status}`);
+  return res.json();
+}
+
+/* ============ INTRO: logo-gem spin + shine + vortex logo ============ */
 (function intro() {
   const overlay = $('#intro');
   if (!overlay) return;
@@ -27,9 +40,11 @@ function showToast(msg) {
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (reduce || window.location.hash) { finish(); return; }   // skip on deep links / reduced motion
   overlay.setAttribute('aria-hidden', 'false');
-  setTimeout(() => overlay.classList.add('forming'), 1100);
-  const timer = setTimeout(finish, reduce ? 900 : 3200);
-  $('#intro-skip')?.addEventListener('click', () => { clearTimeout(timer); finish(); });
+  // timeline: gem spins in 3D (CSS), shine sweeps at ~2.0s, vortex logo forms at ~2.7s
+  const shine = setTimeout(() => overlay.classList.add('shine'), 2000);
+  const forming = setTimeout(() => overlay.classList.add('forming'), 2700);
+  const timer = setTimeout(finish, 4600);
+  $('#intro-skip')?.addEventListener('click', () => { clearTimeout(shine); clearTimeout(forming); clearTimeout(timer); finish(); });
 })();
 
 /* ============ THEME ============ */
@@ -248,12 +263,60 @@ function renderPlans() {
   $$('#plan-grid [data-plan]').forEach(b => b.addEventListener('click', () => {
     const plan = b.dataset.plan;
     const user = currentUser();
-    if (user) { const a = accounts(); a[user.email].tier = plan; saveAccounts(a); showToast(`${plan} is now your plan.`); }
-    else { store.set('pd_pending_plan', plan); openAuth('signup'); showToast(`${plan} selected — create your facet to continue.`); }
+    if (!user && plan !== 'Free') { store.set('pd_pending_plan', plan); openAuth('signup'); showToast(`${plan} selected — create your facet to continue.`); return; }
+    startCheckout(plan);
   }));
   // re-bind magnetic on freshly created buttons
   $$('#plan-grid .magnetic').forEach(bindMagnetic);
 }
+
+/* ---------- Stripe checkout (live keys via backend; demo fallback) ---------- */
+async function startCheckout(plan) {
+  const user = currentUser();
+  if (plan === 'Free') {
+    if (user) { const a = accounts(); a[user.email].tier = 'Free'; saveAccounts(a); showToast('Free plan active.'); }
+    return;
+  }
+  try {
+    const data = await apiFetch('checkout', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'create', plan, interval: billing }),
+    });
+    if (data.url) { showToast(`Redirecting to Stripe for ${plan}…`); window.location.href = data.url; return; }
+    throw new Error(data.error || 'no url');
+  } catch (err) {
+    // Demo fallback: no backend / Stripe configured yet
+    if (user) { const a = accounts(); a[user.email].tier = plan; saveAccounts(a); showToast(`${plan} is now your plan. (Demo mode — connect Stripe to bill.)`); }
+    else showToast(`${plan} selected — sign in to continue. (Demo mode)`);
+  }
+}
+async function verifyCheckoutOnLoad() {
+  const q = new URLSearchParams(location.search);
+  if (!q.get('checkout')) return;
+  const sid = q.get('session_id');
+  history.replaceState({}, '', location.pathname);
+  if (q.get('checkout') === 'cancelled') { showToast('Checkout cancelled — nothing was charged.'); return; }
+  const user = currentUser();
+  if (!user) { store.set('pd_pending_plan', null); showToast('Payment complete — sign in to attach it to your facet.'); return; }
+  try {
+    const data = await apiFetch('checkout', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'verify', sessionId: sid }),
+    });
+    if (data.status === 'paid') {
+      const a = accounts();
+      a[user.email].tier = data.plan;
+      a[user.email].billing = data.interval;
+      saveAccounts(a);
+      const split = data.split;
+      showToast(`${data.plan} plan active — payment split 50/50 (owner $${(split.owner / 100).toFixed(2)} / API funding $${(split.apiFunding / 100).toFixed(2)}).`);
+      refreshAuthUI();
+    }
+  } catch (err) {
+    showToast('Could not verify payment with the backend. (Demo mode)');
+  }
+}
+verifyCheckoutOnLoad();
 function bindMagnetic(btn) {
   btn.addEventListener('mousemove', e => {
     const r = btn.getBoundingClientRect();
@@ -280,16 +343,26 @@ $$('[data-credits]').forEach(b => b.addEventListener('click', () => {
   showToast(`A $${c} credit pack was added.`);
 }));
 
-/* ============ AGENT (chatbox + client-side AI) ============ */
+/* ============ AGENT (pop-up preview + full agent page) ============ */
 const agent = $('#agent');
-function openAgent() { agent.classList.add('open'); agent.setAttribute('aria-hidden', 'false'); setTimeout(() => $('#agent-input')?.focus(), 120); }
+function openAgent() {
+  agent.classList.add('open', 'fade-in');
+  agent.setAttribute('aria-hidden', 'false');
+  setTimeout(() => { agent.classList.remove('fade-in'); $('#agent-input')?.focus(); }, 720);
+}
 function closeAgent() { agent.classList.remove('open'); agent.setAttribute('aria-hidden', 'true'); }
+// Every agent button routes to the larger agent page; the section-04 picture fades the pop-up in.
 $$('[data-launch-agent]').forEach(b => {
-  b.addEventListener('click', openAgent);
-  b.addEventListener('keydown', e => { if (e.key === 'Enter') openAgent(); });
+  b.addEventListener('click', () => { window.location.href = 'agent.html'; });
+});
+$$('[data-agent-picture]').forEach(el => {
+  const open = () => openAgent();
+  el.addEventListener('click', open);
+  el.addEventListener('keydown', e => { if (e.key === 'Enter') open(); });
 });
 $('[data-close-agent]')?.addEventListener('click', closeAgent);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeAgent(); $$('.modal-backdrop.open').forEach(closeModal); } });
+$('#agent-full-link')?.addEventListener('click', e => { e.preventDefault(); window.location.href = 'agent.html'; });
 
 $$('.agent-nav-item[data-agent-view]').forEach(b => b.addEventListener('click', () => {
   $$('.agent-nav-item').forEach(x => x.classList.remove('active'));
@@ -367,11 +440,70 @@ $('#agent-form')?.addEventListener('submit', e => {
   }, 650 + Math.random() * 500);
 });
 
-/* ============ misc ============ */
-$('.ad-window-top button')?.addEventListener('click', e => {
-  const w = e.currentTarget.closest('.ad-window');
-  w.style.opacity = '0'; w.style.transform = 'rotate(3deg) scale(.96)';
-  showToast('Ad dismissed. Your attention stays yours.');
+/* ============ AD BOXES (Red-Bottom $340/mo · Blue $400/mo) ============ */
+const HOUSE_ADS = {
+  redbottom: [
+    { advertiser: 'Aperture Studio', headline: 'Objects for focus', body: 'Desk tools made for long, quiet work.', cta: 'See the range', href: '#plans' },
+    { advertiser: 'Cold Harbour', headline: 'Coffee, measured', body: 'Single-origin subscriptions, ground to order.', cta: 'Start a box', href: '#plans' },
+  ],
+  blue: [
+    { advertiser: 'Northbound', headline: 'Ship on Fridays', body: 'Project tracking that stays out of the way.', cta: 'Try it free', href: '#plans' },
+    { advertiser: 'Verra Type', headline: 'Typefaces with a point', body: 'Editorial families for teams that care.', cta: 'Browse fonts', href: '#plans' },
+  ],
+};
+(function mountAds() {
+  const cfg = (window.PD_CONFIG && window.PD_CONFIG.ads) || {};
+  const liveClient = !!cfg.adsenseClient && /^ca-pub-[0-9]{10,}/.test(cfg.adsenseClient);
+  const dismissed = store.get('pd_ads_dismissed', []);
+  const timers = [];
+  function houseCreative(slot, host, i) {
+    const ad = HOUSE_ADS[slot][i % HOUSE_ADS[slot].length];
+    host.innerHTML = `<div class="ad-house"><span class="ad-advertiser">${ad.advertiser}</span><strong>${ad.headline}</strong><p>${ad.body}</p><a href="${ad.href}">${ad.cta} ↗</a><em>HOUSE CREATIVE — YOUR AD LIVES HERE</em></div>`;
+  }
+  function googleSlot(slot, host) {
+    host.innerHTML = '';
+    const ins = document.createElement('ins');
+    ins.className = 'adsbygoogle';
+    ins.style.display = 'block';
+    ins.setAttribute('data-ad-client', cfg.adsenseClient);
+    ins.setAttribute('data-ad-slot', (cfg.adsenseSlots || {})[slot] || '');
+    ins.setAttribute('data-ad-format', 'auto');
+    ins.setAttribute('data-full-width-responsive', 'true');
+    host.appendChild(ins);
+    (window.adsbygoogle = window.adsbygoogle || []).push({});
+  }
+  $$('[data-ad-slot]').forEach(viewport => {
+    const slot = viewport.dataset.adSlot;
+    const box = viewport.closest('.ad-box');
+    if (dismissed.includes(slot)) { box.classList.add('ad-dismissed'); return; }
+    if (liveClient) { googleSlot(slot, viewport); return; }
+    let i = 0;
+    houseCreative(slot, viewport, i);
+    timers.push(setInterval(() => {
+      i++;
+      viewport.classList.add('is-swapping');
+      setTimeout(() => { houseCreative(slot, viewport, i); viewport.classList.remove('is-swapping'); }, 340);
+    }, 9000));
+  });
+  $$('[data-ad-dismiss]').forEach(b => b.addEventListener('click', () => {
+    const slot = b.dataset.adDismiss;
+    const d = store.get('pd_ads_dismissed', []);
+    if (!d.includes(slot)) { d.push(slot); store.set('pd_ads_dismissed', d); }
+    b.closest('.ad-box').classList.add('ad-dismissed');
+    showToast('Ad dismissed. Your attention stays yours.');
+  }));
+})();
+
+/* ---------- ad request modal ---------- */
+$$('[data-open-ads-info]').forEach(b => b.addEventListener('click', () => openModal('#ads-info-modal')));
+$('#ads-request-form')?.addEventListener('submit', e => {
+  e.preventDefault();
+  const data = new FormData(e.target);
+  const subject = encodeURIComponent(`Ad slot request — ${data.get('box')}`);
+  const body = encodeURIComponent(`Name: ${data.get('name')}\nEmail: ${data.get('email')}\nBox: ${data.get('box')}\nNetwork: ${data.get('network')}\n`);
+  window.location.href = `mailto:ads@palediamond.app?subject=${subject}&body=${body}`;
+  closeModal($('#ads-info-modal'));
+  showToast('Your email client is opening — send the request to confirm your slot.');
 });
 $('.menu-button')?.addEventListener('click', () => {
   const nav = $('.main-nav');

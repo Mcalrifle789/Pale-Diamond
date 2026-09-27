@@ -19,16 +19,7 @@
       <span class="vortex-ring"></span><span class="vortex-ring"></span>
       <span class="vortex-ring"></span><span class="vortex-ring"></span>
       <div class="intro-gem" aria-hidden="true">
-        <svg viewBox="0 0 100 120" width="100" height="120">
-          <defs>
-            <linearGradient id="gemG" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="#f4f8ff"/><stop offset=".5" stop-color="#bcd2ff"/><stop offset="1" stop-color="#6f8ff0"/>
-            </linearGradient>
-          </defs>
-          <path d="M50 4 L92 46 L50 116 L8 46 Z" fill="url(#gemG)" opacity=".95"/>
-          <path d="M50 4 L92 46 L50 116 L8 46 Z" fill="none" stroke="#eaf1ff" stroke-width="1.2" opacity=".8"/>
-          <path d="M8 46 L92 46 M50 4 L50 116 M28 46 L50 116 L72 46 M28 46 L50 4 L72 46" stroke="#dbe6ff" stroke-width=".7" fill="none" opacity=".7"/>
-        </svg>
+        <img src="pale-diamond-gem.png" alt="" draggable="false" />
       </div>
     </div>
     <img class="intro-logo" src="pale-diamond-logo.png" alt="Pale Diamond" />
@@ -137,12 +128,15 @@
             <p>Ask anything. Pale Diamond reads what you mean, thinks it through, and answers with clarity — then helps you act on it.</p>
             <button class="primary-button magnetic gravity" data-launch-agent>Open the agent <span>↗</span></button>
           </div>
-          <div class="agent-mock glass" data-launch-agent role="button" tabindex="0" aria-label="Launch the agent">
-            <div class="agent-mock-top"><span class="mini-mark"></span> PALE DIAMOND · AGENT</div>
+          <div class="agent-mock glass" data-agent-picture role="button" tabindex="0" aria-label="Open the agent">
+            <div class="agent-mock-top"><span class="mini-mark"></span> PALE DIAMOND � AGENT</div>
             <div class="agent-mock-body">
               <div class="bubble user">Draft a launch plan for our new feature.</div>
-              <div class="bubble ai"><span class="ai-dot"></span>On it — here's a three-phase plan with owners and dates…</div>
+              <div class="bubble ai"><span class="ai-dot"></span>On it - here's a three-phase plan with owners and dates.</div>
             </div>
+            <div class="agent-mock-input"><span>ask anything.</span><span class="send-mock">?</span></div>
+            <span class="agent-mock-hint">CLICK TO OPEN THE AGENT</span>
+          </div>
             <div class="agent-mock-input"><span>ask anything…</span><span class="send-mock">➤</span></div>
           </div>
         </div>
@@ -160,7 +154,7 @@
   <!-- ============ MODEL CATALOG ============ -->
       <section class="section model-catalog" id="models" aria-label="Model catalog"><div id="model-catalog"></div></section>
 
-      <section class="section ad-section"><div class="ad-copy"><div class="section-label">06 — A QUIETER INTERNET</div><h2>Room for signal.<br /><span>Not noise.</span></h2><p>Pale Diamond is intentionally calm. Relevant recommendations can live here when they help — never when they interrupt.</p><div class="ad-note"><span class="ad-dot"></span><span>AD PREFERENCES ARE ALWAYS YOURS</span></div></div><div class="ad-stage"><div class="ad-window glass"><div class="ad-window-top"><span>SPONSORED / RELEVANT</span><button aria-label="Dismiss ad">×</button></div><div class="ad-window-content"><div class="ad-product-mark">N°<br />01</div><div><span>AN OBJECT FOR FOCUS</span><h3>Designed for<br /><em>the long way in.</em></h3><a href="#plans">Discover <span>↗</span></a></div></div></div><div class="ad-caption">YOUR ATTENTION IS NOT THE PRODUCT</div></div></section>
+      <section class="section ad-section" id="advertising"><div class="ad-copy"><div class="section-label">06 — A QUIETER INTERNET</div><h2>Room for signal.<br /><span>Not noise.</span></h2><p>Pale Diamond is intentionally calm. Two premium placements are available for companies and individual users — served through Media.net and Google AdSense, so the network matches each ad to the visitor automatically.</p><div class="advertise-panel glass"><span class="stat-label">ADVERTISE WITH US</span><div class="advertise-rates"><div class="advertise-rate"><i class="rate-dot rate-redbottom"></i><div><strong>Red-Bottom box</strong><span>$340 / month</span></div></div><div class="advertise-rate"><i class="rate-dot rate-blue"></i><div><strong>Blue-Ad box</strong><span>$400 / month</span></div></div></div><p class="advertise-fine">Request a slot with your company name, creative (image or HTML), and preferred duration. Once your Media.net or Google AdSense tag is connected, ads are delivered and rotated onto the site automatically.</p><button class="ghost-button" data-open-ads-info>Request an ad slot</button></div><div class="ad-note"><span class="ad-dot"></span><span>AD PREFERENCES ARE ALWAYS YOURS</span></div></div><div class="ad-stage"><div class="ad-box ad-redbottom" id="ad-redbottom"><div class="ad-box-top"><span>RED-BOTTOM SLOT / $340/MO</span><button class="ad-box-dismiss" data-ad-dismiss="redbottom" aria-label="Dismiss ad">×</button></div><div class="ad-viewport" data-ad-slot="redbottom"></div></div><div class="ad-box ad-blue" id="ad-blue"><div class="ad-box-top"><span>BLUE-AD SLOT / $400/MO</span><button class="ad-box-dismiss" data-ad-dismiss="blue" aria-label="Dismiss ad">×</button></div><div class="ad-viewport" data-ad-slot="blue"></div></div><div class="ad-caption">SERVED VIA MEDIA.NET + GOOGLE ADSENSE</div></div></section>
 
       <section class="final-cta"><div class="final-diamond"></div><div class="section-label">07 — YOUR NEXT MOVE</div><h2>Make it<br /><em>count.</em></h2><p>The workspace for people who want their tools to feel as thoughtful as their work.</p><button class="primary-button magnetic gravity" data-launch-agent>Enter Pale Diamond <span>↗</span></button></section>
     </main>
@@ -185,7 +179,7 @@
         <button class="agent-account" id="agent-account"><span class="agent-account-avatar">G</span><span class="agent-account-name">Guest</span><span class="agent-account-caret">›</span></button>
       </aside>
       <section class="agent-main">
-        <div class="agent-main-top"><div class="agent-title"><span class="mini-mark"></span> PALE DIAMOND</div><button class="agent-close" data-close-agent aria-label="Close agent">×</button></div>
+        <div class="agent-main-top"><div class="agent-title"><span class="mini-mark"></span> PALE DIAMOND</div><a href="agent.html" id="agent-full-link" class="agent-full-link" title="Open the full agent page">Open full page ↗</a><button class="agent-close" data-close-agent aria-label="Close agent">×</button></div>
         <div class="agent-messages" id="agent-messages">
           <div class="agent-welcome"><img src="pale-diamond-logo.png" alt="Pale Diamond" /><p>Ask anything. I read what you mean and answer with clarity.</p></div>
         </div>
@@ -227,7 +221,11 @@
   <!-- ============ PAY AS YOU GO ============ -->
   <div class="modal-backdrop" id="paygo-modal" aria-hidden="true"><div class="modal-card paygo-modal glass"><button class="modal-close" data-close-modal aria-label="Close">×</button><div class="modal-kicker">USAGE / FLEXIBLE</div><h2>Keep the<br /><em>momentum.</em></h2><p>Add credits to your facet whenever you need more runway. Your balance stays yours until you use it.</p><div class="usage-options"><button data-credits="10"><strong>$10</strong><span>100 credits</span></button><button data-credits="25"><strong>$25</strong><span>275 credits</span></button><button data-credits="50"><strong>$50</strong><span>600 credits</span></button></div></div></div>
 
+  <!-- ============ AD REQUEST MODAL ============ -->
+  <div class="modal-backdrop" id="ads-info-modal" aria-hidden="true"><div class="modal-card glass ads-info-card"><button class="modal-close" data-close-modal aria-label="Close">×</button><div class="modal-kicker">ADVERTISING / MEDIA</div><h2>Put your brand<br /><em>in the light.</em></h2><p>Two premium placements on Pale Diamond. Companies and individual users can request a box; Media.net and Google AdSense then deliver and rotate the ad automatically.</p><div class="ads-info-rates"><div class="ads-rate glass"><i class="rate-dot rate-redbottom"></i><div><strong>Red-Bottom box</strong><span>$340 / month</span></div><p>Feature placement on the landing page.</p></div><div class="ads-rate glass"><i class="rate-dot rate-blue"></i><div><strong>Blue-Ad box</strong><span>$400 / month</span></div><p>Premium slot with top billing in the rotation.</p></div></div><form id="ads-request-form"><label>Company or individual name<input type="text" name="name" placeholder="Acme Studio" required /></label><label>Contact email<input type="email" name="email" placeholder="you@company.com" required /></label><label>Preferred box<select name="box" required><option value="Red-Bottom — $340/mo">Red-Bottom — $340/mo</option><option value="Blue-Ad — $400/mo">Blue-Ad — $400/mo</option></select></label><label>Network you'll serve through<select name="network"><option>Google AdSense</option><option>Media.net</option></select></label><button class="primary-button full magnetic" type="submit">Send request <span>↗</span></button></form><p class="modal-note">After your request is approved you'll receive the placement agreement and tag instructions. Your network tag is then mounted directly into the box.</p></div></div>
+
   <div class="toast" role="status" aria-live="polite"></div>
+  <script src="config.js"></script>
   <script src="model-catalog.js"></script>
   <script src="app.js"></script>
 </body>

@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#05070d" />
+  <title>Pale Diamond — Agent</title>
+  <meta name="description" content="The Pale Diamond agent: chat, image generation, documents, spreadsheets, presentations, diagrams, weather, and music — one crystalline workspace." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&family=Dhurjati&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="agent.css" />
+</head>
+<body data-theme="dark">
+
+  <div class="marble-bg" aria-hidden="true"></div>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+
+  <div class="agent-page">
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="ag-sidebar glass">
+      <div class="ag-model-row">
+        <span>model:</span>
+        <button id="ag-model" class="ag-model-button" title="Choose a model">loading…</button>
+      </div>
+      <nav class="ag-nav" aria-label="Agent navigation">
+        <button class="ag-nav-item active" data-view="chat"><i>💬</i>New Chat</button>
+        <button class="ag-nav-item" data-view="conversations"><i>🕘</i>Conversations</button>
+        <button class="ag-nav-item" data-view="packages"><i>📦</i>Packages</button>
+        <button class="ag-nav-item" data-view="models"><i>🧊</i>Models</button>
+        <button class="ag-nav-item" data-view="templates"><i>📄</i>Templates</button>
+        <button class="ag-nav-item" data-view="analytics"><i>📊</i>Analytics</button>
+        <button class="ag-nav-item" data-view="settings"><i>⚙️</i>Settings</button>
+        <button class="ag-nav-item" data-view="help"><i>❓</i>Help</button>
+      </nav>
+      <button class="ag-account" id="ag-account" title="Account">
+        <span class="ag-account-avatar" id="ag-account-avatar">G</span>
+        <span class="ag-account-name" id="ag-account-name">Guest</span>
+        <span class="ag-account-caret">›</span>
+      </button>
+    </aside>
+
+    <!-- ============ MAIN ============ -->
+    <main class="ag-main">
+      <header class="ag-top">
+        <img class="ag-wordmark" src="pale-diamond-logo.png" alt="Pale Diamond" draggable="false" />
+        <a class="ag-home-link" href="index.html">← Back to site</a>
+      </header>
+
+      <!-- CHAT -->
+      <section class="ag-view active" data-view="chat">
+        <div class="ag-chat-area" id="ag-chat-area">
+          <div class="ag-welcome" id="ag-welcome">
+            <img src="pale-diamond-gem.png" alt="" draggable="false" />
+            <p>Ask anything. I read what you mean, think it through, and answer with clarity — then help you act on it.</p>
+            <div class="ag-chips">
+              <button data-chip="Make an image of a pale blue crystal floating in a marble hall">✦ Make an image</button>
+              <button data-chip="What's the weather forecast for New York?">☀ Weather</button>
+              <button data-chip="Make a presentation about our Q4 launch plan">📑 Presentation</button>
+              <button data-chip="Make a spreadsheet tracking our project budget">📊 Spreadsheet</button>
+              <button data-chip="Draw a diagram of how a request flows from the browser to OpenRouter">◈ Diagram</button>
+            </div>
+          </div>
+          <div class="ag-messages" id="ag-messages" aria-live="polite"></div>
+        </div>
+        <div class="ag-attachments glass" id="ag-attachments" hidden></div>
+        <form class="ag-input-bar glass" id="ag-form" autocomplete="off">
+          <button type="button" class="ag-plus" id="ag-plus" title="Attach images or documents" aria-label="Attach files">+</button>
+          <input type="file" id="ag-file" multiple hidden accept="image/*,.txt,.md,.csv,.json,.log,.docx" />
+          <input id="ag-input" type="text" placeholder="ask anything..." aria-label="Message the agent" />
+          <button type="submit" class="ag-send" aria-label="Send">➤</button>
+        </form>
+      </section>
+
+      <!-- MODELS -->
+      <section class="ag-view" data-view="models">
+        <div class="ag-view-head">
+          <h2>Models</h2>
+          <p>Every model available through the OpenRouter routers — grouped by provider. Image-capable models power image generation.</p>
+          <input type="search" id="ag-model-search" class="ag-search" placeholder="search models…" />
+        </div>
+        <div class="ag-scroll" id="ag-models-list"><p class="ag-empty">Loading the router catalog…</p></div>
+      </section>
+
+      <!-- CONVERSATIONS -->
+      <section class="ag-view" data-view="conversations">
+        <div class="ag-view-head"><h2>Conversations</h2><p>Saved locally to your facet. Open one to continue where you left off.</p></div>
+        <div class="ag-scroll" id="ag-convos"><p class="ag-empty">No conversations yet — start a chat.</p></div>
+      </section>
+
+      <!-- PACKAGES -->
+      <section class="ag-view" data-view="packages">
+        <div class="ag-view-head"><h2>Packages</h2><p>Plans bundle model access and generation quotas. Manage your subscription on the main site.</p></div>
+        <div class="ag-scroll"><div class="ag-plan-row" id="ag-plans"></div>
+        <a class="ag-ghost-link" href="index.html#plans">Compare plans on the main site ↗</a></div>
+      </section>
+
+      <!-- TEMPLATES -->
+      <section class="ag-view" data-view="templates">
+        <div class="ag-view-head"><h2>Templates</h2><p>One click fills the chat with a ready-to-run request.</p></div>
+        <div class="ag-scroll"><div class="ag-tpl-grid" id="ag-templates"></div></div>
+      </section>
+
+      <!-- ANALYTICS -->
+      <section class="ag-view" data-view="analytics">
+        <div class="ag-view-head"><h2>Analytics</h2><p>How you use your facet — tracked locally, never uploaded.</p></div>
+        <div class="ag-scroll">
+          <div class="ag-stats" id="ag-stats"></div>
+          <div class="ag-timeline glass"><span class="stat-label">USAGE TIMELINE</span><div class="timeline-bars" id="ag-timeline-bars"></div></div>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section class="ag-view" data-view="settings">
+        <div class="ag-view-head"><h2>Settings</h2><p>Your facet, your rules.</p></div>
+        <div class="ag-scroll">
+          <div class="ag-setting glass"><div><strong>Backend</strong><p>Vercel API URL that keeps the OpenRouter key private. Leave empty for same-origin.</p></div>
+            <div class="ag-setting-action"><input type="url" id="ag-api-url" placeholder="https://your-app.vercel.app" /><button class="ag-ghost-button" id="ag-save-api">Save</button></div></div>
+          <div class="ag-setting glass"><div><strong>Appearance</strong><p>Bright or dark facet.</p></div><button class="ag-ghost-button" id="ag-theme">Toggle</button></div>
+          <div class="ag-setting glass"><div><strong>Default model</strong><p>Model used for every new chat.</p></div><button class="ag-ghost-button" id="ag-clear-model">Reset to Auto</button></div>
+          <div class="ag-setting glass" id="ag-account-info"><div><strong>Account</strong><p id="ag-account-stats">Not signed in.</p></div><a class="ag-ghost-button" href="index.html">Profile on site</a></div>
+          <div class="ag-setting glass danger"><div><strong>Clear local data</strong><p>Removes saved conversations, models and usage from this browser.</p></div><button class="ag-ghost-button" id="ag-clear-data">Clear</button></div>
+        </div>
+      </section>
+
+      <!-- HELP -->
+      <section class="ag-view" data-view="help">
+        <div class="ag-view-head"><h2>Help</h2><p>Everything the agent can do.</p></div>
+        <div class="ag-scroll">
+          <div class="ag-help-grid">
+            <div class="glass"><strong>Ask anything</strong><p>Type a message and Pale Diamond replies with the selected model. Responses stream in live.</p></div>
+            <div class="glass"><strong>Make images</strong><p>"Make an image of…" — with an image-capable model selected, the gem glows while your image generates. Click it to enlarge, download it to keep it.</p></div>
+            <div class="glass"><strong>Attach files</strong><p>Press +, drag files into the chatbox, or paste from the clipboard. Images and text documents are read into the conversation.</p></div>
+            <div class="glass"><strong>Create files</strong><p>Ask for a presentation, document, spreadsheet, datasheet or diagram — a downloadable file is built for you.</p></div>
+            <div class="glass"><strong>Live weather</strong><p>Ask about the weather anywhere and the agent answers from live forecast data.</p></div>
+            <div class="glass"><strong>Connect to websites</strong><p>Paste any URL into the chat and the agent reads the live page, then works with its content.</p></div>
+            <div class="glass"><strong>Music</strong><p>The player lives in the bottom corner. Add your own songs, queue them, and search your playlist.</p></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ============ MUSIC PLAYER (persistent, docked) ============ -->
+  <div class="ag-player glass" id="ag-player">
+    <img class="ag-player-gem" src="pale-diamond-gem.png" alt="" draggable="false" />
+    <div class="ag-player-meta"><strong id="ag-player-title">Nothing playing</strong><span id="ag-player-sub">add songs to build a queue</span></div>
+    <button class="ag-pbtn" id="ag-prev" aria-label="Previous">⏮</button>
+    <button class="ag-pbtn ag-play" id="ag-play" aria-label="Play / pause">▶</button>
+    <button class="ag-pbtn" id="ag-next" aria-label="Next">⏭</button>
+    <button class="ag-pbtn ag-queue-toggle" id="ag-queue-toggle" aria-label="Queue">☰</button>
+  </div>
+
+  <div class="ag-queue glass" id="ag-queue" hidden>
+    <div class="ag-queue-head"><strong>QUEUE</strong><button id="ag-queue-add" class="ag-ghost-button">+ Add songs</button>
+      <input type="file" id="ag-music-file" multiple hidden accept="audio/*" /></div>
+    <input type="search" id="ag-queue-search" class="ag-search" placeholder="search your songs…" />
+    <div class="ag-queue-list" id="ag-queue-list"><p class="ag-empty">Queue is empty — add your own audio files.</p></div>
+    <div class="ag-queue-bar glass">
+      <span id="ag-time-now">0:00</span>
+      <input type="range" id="ag-seek" min="0" max="100" value="0" />
+      <span id="ag-time-total">0:00</span>
+      <input type="range" id="ag-vol" min="0" max="100" value="80" title="Volume" />
+    </div>
+    <audio id="ag-audio" preload="metadata"></audio>
+  </div>
+
+  <!-- ============ IMAGE LIGHTBOX ============ -->
+  <div class="ag-lightbox" id="ag-lightbox" hidden>
+    <button class="ag-lb-close" id="ag-lb-close" aria-label="Close">×</button>
+    <img id="ag-lb-img" alt="Generated image" />
+    <a class="ag-ghost-button" id="ag-lb-download" download="pale-diamond-image.png">⬇ Download image</a>
+  </div>
+
+  <div class="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js" defer></script>
+  <script src="config.js"></script>
+  <script src="model-catalog.js"></script>
+  <script src="agent.js"></script>
+</body>
+</html>

@@ -47,20 +47,41 @@ html[data-theme="light"] .ambient{opacity:.14}
 /* ============ INTRO OVERLAY ============ */
 .intro-overlay{position:fixed;inset:0;z-index:120;display:grid;place-items:center;background:radial-gradient(circle at 50% 45%,#0a1020,#03050b 70%);overflow:hidden;transition:opacity .8s ease,visibility .8s}
 .intro-overlay.done{opacity:0;visibility:hidden;pointer-events:none}
-.vortex{position:relative;width:340px;height:340px;display:grid;place-items:center}
+.vortex{position:relative;width:340px;height:340px;display:grid;place-items:center;perspective:900px}
 .vortex-ring{position:absolute;border:1px solid rgba(174,196,255,.34);border-radius:50%;border-top-color:rgba(226,236,255,.9);border-left-color:rgba(200,220,255,.5);animation:vortex-spin 2.6s cubic-bezier(.6,0,.2,1) infinite}
 .vortex-ring:nth-child(1){width:330px;height:330px;animation-duration:3.1s}
 .vortex-ring:nth-child(2){width:250px;height:250px;animation-duration:2.3s;animation-direction:reverse}
 .vortex-ring:nth-child(3){width:172px;height:172px;animation-duration:1.7s}
 .vortex-ring:nth-child(4){width:104px;height:104px;animation-duration:1.2s;animation-direction:reverse}
 @keyframes vortex-spin{to{transform:rotate(360deg)}}
-.intro-gem{position:absolute;filter:drop-shadow(0 0 22px rgba(150,185,255,.7));animation:gem-dance 1.9s ease-in-out infinite}
-@keyframes gem-dance{0%,100%{transform:translateY(-6px) rotate(-8deg) scale(1)}25%{transform:translateY(3px) rotate(6deg) scale(1.05)}50%{transform:translateY(-3px) rotate(-4deg) scale(.98)}75%{transform:translateY(4px) rotate(8deg) scale(1.03)}}
-.intro-logo{position:absolute;height:96px;opacity:0;transform:scale(.2) rotate(-220deg);filter:blur(14px) drop-shadow(0 0 26px rgba(160,190,255,.6));animation:logo-vortex 1.5s cubic-bezier(.2,.7,.2,1) forwards;animation-delay:1.25s}
+/* the Pale Diamond logo mark, spun in realistic 3D */
+.intro-gem{position:absolute;width:158px;transform-style:preserve-3d;filter:drop-shadow(0 0 24px rgba(150,185,255,.65))}
+.intro-gem img{width:100%;display:block;-webkit-mask-image:radial-gradient(circle at 50% 46%,#000 62%,rgba(0,0,0,.35) 78%,transparent 96%);mask-image:radial-gradient(circle at 50% 46%,#000 62%,rgba(0,0,0,.35) 78%,transparent 96%);animation:gem-spin3d 2.2s cubic-bezier(.3,.05,.25,1) forwards}
+@keyframes gem-spin3d{
+  0%{transform:rotateY(0deg) rotateZ(-6deg) translateY(6px) scale(.86)}
+  38%{transform:rotateY(302deg) rotateZ(4deg) translateY(-7px) scale(1.04)}
+  62%{transform:rotateY(560deg) rotateZ(-3deg) translateY(3px) scale(.97)}
+  85%{transform:rotateY(748deg) rotateZ(2deg) translateY(-2px) scale(1.01)}
+  100%{transform:rotateY(810deg) rotateZ(0) translateY(0) scale(1)}
+}
+/* realistic shine sweep once the spin settles */
+.intro-gem::before{content:'';position:absolute;inset:-8%;border-radius:50%;background:radial-gradient(circle,rgba(220,235,255,.0) 40%,rgba(220,235,255,0) 60%);opacity:0;pointer-events:none}
+.intro-overlay.shine .intro-gem::before{animation:gem-flash .9s ease forwards}
+@keyframes gem-flash{
+  0%{opacity:0;background:radial-gradient(circle,rgba(220,235,255,0) 42%,rgba(235,244,255,.9) 50%,rgba(220,235,255,0) 58%);transform:scale(.7)}
+  35%{opacity:1}
+  100%{opacity:0;background:radial-gradient(circle,rgba(220,235,255,0) 42%,rgba(235,244,255,.95) 50%,rgba(220,235,255,0) 58%);transform:scale(1.5)}
+}
+.intro-overlay.shine .intro-gem::after{content:'';position:absolute;top:-12%;left:-30%;width:160%;height:120%;background:linear-gradient(115deg,transparent 42%,rgba(240,247,255,.85) 50%,transparent 58%);mix-blend-mode:screen;animation:gem-sweep .8s ease .1s forwards;opacity:0;pointer-events:none;clip-path:polygon(50% 0,86% 26%,100% 62%,50% 104%,12% 64%,0 28%)}
+@keyframes gem-sweep{0%{opacity:0;transform:translateX(-55%) rotate(8deg)}30%{opacity:1}100%{opacity:0;transform:translateX(55%) rotate(8deg)}}
+/* gem folds into the logo as the vortex forms */
+.intro-overlay.forming .intro-gem{animation:gem-fold .8s cubic-bezier(.5,0,.3,1) forwards}
+@keyframes gem-fold{to{opacity:0;transform:translateY(-46px) scale(.22) rotateY(940deg);filter:blur(6px)}}
+.intro-logo{position:absolute;height:96px;opacity:0;transform:scale(.2) rotate(-220deg);filter:blur(14px) drop-shadow(0 0 26px rgba(160,190,255,.6));animation:logo-vortex 1.6s cubic-bezier(.2,.7,.2,1) forwards;animation-delay:.2s}
 @keyframes logo-vortex{0%{opacity:0;transform:scale(.2) rotate(-220deg);filter:blur(16px)}60%{opacity:1}100%{opacity:1;transform:scale(1) rotate(0);filter:blur(0) drop-shadow(0 0 26px rgba(160,190,255,.55))}}
-.intro-overlay.forming .vortex{animation:vortex-out 1s ease forwards;animation-delay:1.15s}
+.intro-overlay.forming .vortex{animation:vortex-out 1s ease forwards}
 @keyframes vortex-out{to{opacity:0;transform:scale(1.5) rotate(90deg)}}
-.intro-tag{position:absolute;bottom:16%;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.42em;color:#8fa0c6;opacity:0;animation:fade-in .8s ease forwards;animation-delay:2.2s}
+.intro-tag{position:absolute;bottom:16%;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.42em;color:#8fa0c6;opacity:0;animation:fade-in .8s ease forwards;animation-delay:3.6s}
 .intro-skip{position:absolute;bottom:26px;right:28px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.1em;color:#7f8bab;opacity:.7}
 .intro-skip:hover{color:#fff}
 @keyframes fade-in{to{opacity:1}}
@@ -410,4 +431,65 @@ html[data-theme="light"] .modal-card input{background:rgba(255,255,255,.7)}
 @media (prefers-reduced-motion:reduce){
   .refraction,.intro-gem,.vortex-ring,.intro-logo{animation:none!important}
   .intro-logo{opacity:1;transform:none;filter:none}
+}
+
+/* ============================================================
+   UPDATE 2026-09 — agent fade, ad boxes, advertise panel
+   ============================================================ */
+
+/* ---------- agent overlay fade-in (section 04 picture) ---------- */
+.agent-overlay.open{display:grid;animation:agent-fade .7s ease}
+.agent-overlay.open .agent-shell{animation:agent-rise .7s cubic-bezier(.2,.7,.2,1)}
+@keyframes agent-fade{from{opacity:0}to{opacity:1}}
+@keyframes agent-rise{from{opacity:0;transform:translateY(16px) scale(.985)}to{opacity:1;transform:none}}
+.agent-full-link{margin-left:auto;margin-right:14px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.14em;color:var(--soft);border-bottom:1px solid transparent;transition:.2s;white-space:nowrap}
+.agent-full-link:hover{color:var(--ink);border-bottom-color:var(--accent)}
+
+/* ---------- ad boxes ---------- */
+.ad-stage{display:flex;flex-direction:column;gap:26px;align-items:flex-end;min-height:420px;position:relative;padding-right:34px}
+.ad-box{width:min(470px,94%);border-radius:10px;overflow:hidden;background:var(--glass-bg);border:1px solid var(--glass-brd);backdrop-filter:blur(20px) saturate(1.2);-webkit-backdrop-filter:blur(20px) saturate(1.2);box-shadow:0 20px 60px rgba(0,0,0,.35),inset 0 1px 0 var(--glass-hi);transition:opacity .4s,transform .4s,filter .4s}
+.ad-box-top{height:36px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.18em;color:var(--muted);border-bottom:1px solid var(--line)}
+.ad-box-top button{color:var(--soft);font-size:18px;line-height:1}
+.ad-box-top button:hover{color:var(--ink)}
+.ad-viewport{min-height:218px;position:relative;overflow:hidden;transition:opacity .34s ease}
+.ad-viewport.is-swapping{opacity:0}
+.ad-redbottom{border-bottom:3px solid #c8102e}
+.ad-blue{border-bottom:3px solid #4d6ff0}
+.ad-box.ad-dismissed{opacity:.35;filter:grayscale(1)}
+.ad-house{min-height:218px;padding:34px 36px;display:flex;flex-direction:column;gap:10px;background:linear-gradient(132deg,rgba(24,32,54,.6),rgba(10,14,26,.4))}
+.ad-house .ad-advertiser{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.2em;color:var(--muted)}
+.ad-house strong{font-size:24px;line-height:1.06;letter-spacing:-.03em;font-weight:600;font-family:'Dhurjati','Manrope',sans-serif;color:var(--ink)}
+.ad-house p{font-size:12px;color:var(--muted);max-width:300px;margin:0}
+.ad-house a{font-size:10px;letter-spacing:.06em;border-bottom:1px solid var(--accent);padding-bottom:5px;color:var(--ink);width:max-content;margin-top:4px}
+.ad-house em{margin-top:auto;font-family:'DM Mono',monospace;font-style:normal;font-size:7px;letter-spacing:.2em;color:var(--muted);opacity:.65}
+
+/* ---------- advertise with us panel ---------- */
+.advertise-panel{margin-top:34px;padding:24px 26px;border-radius:12px;display:flex;flex-direction:column;gap:14px}
+.advertise-rates{display:flex;gap:26px;flex-wrap:wrap}
+.advertise-rate{display:flex;align-items:center;gap:12px}
+.advertise-rate strong{display:block;font-size:13px}
+.advertise-rate span{font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:.08em}
+.rate-dot{width:10px;height:10px;border-radius:3px;transform:rotate(45deg);display:inline-block;flex:none}
+.rate-redbottom{background:linear-gradient(140deg,#ff4d5e,#c8102e);box-shadow:0 0 12px rgba(200,16,46,.5)}
+.rate-blue{background:linear-gradient(140deg,#7d9bff,#4d6ff0);box-shadow:0 0 12px rgba(77,111,240,.5)}
+.advertise-fine{font-size:10.5px;color:var(--muted);line-height:1.7;margin:0}
+
+/* ---------- ad request modal ---------- */
+.ads-info-card{max-width:520px;max-height:90vh;overflow:auto}
+.ads-info-rates{display:flex;gap:14px;margin:20px 0 22px}
+.ads-rate{flex:1;padding:16px;border-radius:10px;display:flex;flex-direction:column;gap:6px}
+.ads-rate strong{font-size:14px;display:block}
+.ads-rate span{font-family:'DM Mono',monospace;font-size:11px;color:var(--accent)}
+.ads-rate p{font-size:10px;color:var(--muted);margin:4px 0 0}
+.modal-card select{display:block;width:100%;margin-top:7px;border:1px solid var(--glass-brd);background:rgba(8,12,22,.5);padding:13px;color:var(--ink);font:inherit;font-size:12px;outline:0;border-radius:4px;appearance:none}
+html[data-theme="light"] .modal-card select{background:rgba(255,255,255,.7)}
+.modal-card select:focus{border-color:var(--accent)}
+.ads-info-card .modal-note{margin-top:16px}
+
+@media (max-width:1100px){
+  .ad-stage{padding-right:0}
+  .ad-caption{transform:none;position:static}
+}
+@media (max-width:560px){
+  .ads-info-rates{flex-direction:column}
 }
