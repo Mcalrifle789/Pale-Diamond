@@ -51,11 +51,12 @@ The `api/` folder is the serverless backend (deploy the repo to Vercel):
 | `POST /api/checkout` | Stripe Checkout (create) + verification (verify)   |
 | `GET  /api/health`| Status + which services are configured                |
 
-`api/dev_server.py` hosts all endpoints on one origin for local testing:
+One function hosts everything on one origin (`api/index.py`, wired via
+rewrites in `vercel.json`). Run it locally the same way:
 
 ```bash
 pip install -r requirements.txt
-PYTHONPATH=api uvicorn api.dev_server:app --port 8900
+uvicorn api.index:app --port 8900
 ```
 
 Then set the backend URL in Agent → Settings (or `site/config.js` → `apiBase`).
