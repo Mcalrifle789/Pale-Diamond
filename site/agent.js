@@ -1021,6 +1021,7 @@ function renderPackages() {
   let queue = [];            // {name, url, size}
   let index = -1;
   let filter = '';
+  let errorStreak = 0;
 
   function renderQueue() {
     const list = $('#ag-queue-list');
@@ -1031,9 +1032,9 @@ function renderPackages() {
           <span class="ag-song-idx">${String(i + 1).padStart(2, '0')}</span>
           <span class="ag-song-name">${escapeHtml(s.name)}</span>
           <span class="ag-song-actions">
-            <button data-up="${i}" aria-label="Move up">▲</button>
-            <button data-down="${i}" aria-label="Move down">▼</button>
-            <button data-del="${i}" class="ag-song-del" aria-label="Remove">✕</button>
+            <button data-up="${i}" aria-label="Move up">\u25b2</button>
+            <button data-down="${i}" aria-label="Move down">\u25bc</button>
+            <button data-del="${i}" class="ag-song-del" aria-label="Remove">\u2715</button>
           </span>
         </div>`).join('')
       : '<p class="ag-empty">Nothing in the queue matches.</p>';
@@ -1053,60 +1054,97 @@ function renderPackages() {
     renderQueue();
   }
   function removeAt(i) {
-    if (i === index) { stop(); }
-    else if (i < index) index--;
+    const removing = queue[i];
+    if (!removing) return;
+    const wasCurrent = i === index;
     const wasPlaying = !audio.paused;
-    const url = queue[i].url;
     queue.splice(i, 1);
-    URL.revokeObjectURL(url);
-    if (i === index && wasPlaying && queue.length) { index = Math.min(index, queue.length - 1); playAt(index); }
-    else if (i === index) { index = -1; updateMeta(); }
-    renderQueue();
+    URL.revokeObjectURL(removing.url);
+    if (wasCurrent) {
+      stop();
+      index = -1;
+      if (queue.length) {
+        index = Math.min(i, queue.length - 1);
+        if (wasPlaying) playAt(index);
+        else updateMeta();
+      } else updateMeta();
+    } else {
+      if (i < index) index--;
+      updateMeta();
+    }
   }
   function updateMeta() {
     const cur = queue[index];
     $('#ag-player-title').textContent = cur ? cur.name.replace(/\.[^.]+$/, '') : 'Nothing playing';
-    $('#ag-player-sub').textContent = cur ? `${fmtBytes(cur.size)} · track ${index + 1}/${queue.length}` : 'add songs to build a queue';
-    player.classList.toggle('playing', !!cur && !audio.paused);
+    $('#ag-player-sub').textContent = cur ? `${fmtBytes(cur.size)} \u00b7 track ${index + 1}/${queue.length}` : 'add songs to build a queue';
     renderQueue();
   }
   function playAt(i) {
     if (i < 0 || i >= queue.length) return;
     index = i;
     audio.src = queue[i].url;
-    audio.play().catch(() => showToast('Press play to start (browser autoplay rules).'));
+    audio.play().catch(() => { /* blocked until a user gesture ? the play button starts it */ });
     updateMeta();
-    setPlayIcon();
   }
-  function setPlayIcon() { $('#ag-play').textContent = audio.paused ? '▶' : '⏸'; }
-  function stop() { audio.pause(); audio.removeAttribute('src'); }
-  function fmtTime(t) { if (!isFinite(t)) return '0:00'; const m = Math.floor(t / 60); return `${m}:${String(Math.floor(t % 60)).padStart(2, '0')}`; }
+  function stop() {
+    audio.pause();
+    audio.removeAttribute('src');
+    audio.load();
+  }
 
-  $('#ag-play')?.addEventListener('click', () => {
-    if (!queue.length) return $('#ag-queue-add').click();
-    if (index === -1) return playAt(0);
-    audio.paused ? audio.play() : audio.pause();
-    setPlayIcon(); updateMeta();
+  /* Playback state is event-driven: the button always mirrors reality. */
+  audio.addEventListener('play', () => { $('#ag-play').textContent = '\u23f8'; player.classList.add('playing'); });
+  audio.addEventListener('pause', () => { $('#ag-play').textContent = '\u25b6'; player.classList.remove('playing'); });
+  audio.addEventListener('playing', () => { errorStreak = 0; });
+  audio.addEventListener('error', () => {
+    const bad = queue[index];
+    if (bad) showToast(`Can't play "${bad.name}" ? this format isn't supported by your browser.`);
+    errorStreak++;
+    if (queue.length > 1 && errorStreak < queue.length) {
+      const nxt = (index + 1) % queue.length;
+      index = -1;
+      playAt(nxt);
+    } else { index = -1; updateMeta(); }
   });
-  $('#ag-next')?.addEventListener('click', () => playAt((index + 1) % Math.max(1, queue.length)));
-  $('#ag-prev')?.addEventListener('click', () => playAt(index <= 0 ? queue.length - 1 : index - 1));
-  $('#ag-queue-toggle')?.addEventListener('click', () => { queuePanel.hidden = !queuePanel.hidden; if (!queuePanel.hidden) renderQueue(); });
-  $('#ag-queue-add')?.addEventListener('click', () => $('#ag-music-file').click());
-  $('#ag-music-file')?.addEventListener('change', e => {
-    [...e.target.files].forEach(f => queue.push({ name: f.name, url: URL.createObjectURL(f), size: f.size }));
-    e.target.value = '';
-    if (index === -1 && queue.length) playAt(0); else renderQueue();
-    showToast(`${queue.length} song${queue.length > 1 ? 's' : ''} in your queue.`);
-  });
-  $('#ag-queue-search')?.addEventListener('input', e => { filter = e.target.value.toLowerCase(); renderQueue(); });
+  audio.addEventListener('ended', () => { if (queue.length > 1) playAt((index + 1) % queue.length); });
   audio.addEventListener('timeupdate', () => {
     $('#ag-time-now').textContent = fmtTime(audio.currentTime);
     $('#ag-time-total').textContent = fmtTime(audio.duration);
     $('#ag-seek').value = audio.duration ? (audio.currentTime / audio.duration) * 100 : 0;
   });
+
+  function fmtTime(t) { if (!isFinite(t)) return '0:00'; const m = Math.floor(t / 60); return `${m}:${String(Math.floor(t % 60)).padStart(2, '0')}`; }
+
+  $('#ag-play')?.addEventListener('click', () => {
+    if (!queue.length) {
+      if (queuePanel.hidden) queuePanel.hidden = false;
+      renderQueue();
+      $('#ag-queue-add').click();
+      return;
+    }
+    if (!audio.src) return playAt(index === -1 ? 0 : index);
+    audio.paused ? audio.play().catch(() => {}) : audio.pause();
+  });
+  $('#ag-next')?.addEventListener('click', () => { if (queue.length) playAt((index + 1) % queue.length); });
+  $('#ag-prev')?.addEventListener('click', () => { if (queue.length) playAt(index <= 0 ? queue.length - 1 : index - 1); });
+  $('#ag-queue-toggle')?.addEventListener('click', () => {
+    queuePanel.hidden = !queuePanel.hidden;
+    if (!queuePanel.hidden) renderQueue();
+  });
+  $('#ag-queue-add')?.addEventListener('click', () => $('#ag-music-file').click());
+  $('#ag-music-file')?.addEventListener('change', e => {
+    const added = [...e.target.files];
+    added.forEach(f => queue.push({ name: f.name, url: URL.createObjectURL(f), size: f.size }));
+    e.target.value = '';
+    if (!added.length) return;
+    if (queuePanel.hidden) queuePanel.hidden = false;
+    if (index === -1) playAt(0);
+    else { updateMeta(); if (audio.paused && audio.src) audio.play().catch(() => {}); }
+    showToast(`${queue.length} song${queue.length > 1 ? 's' : ''} in your queue.`);
+  });
+  $('#ag-queue-search')?.addEventListener('input', e => { filter = e.target.value.toLowerCase(); renderQueue(); });
   $('#ag-seek')?.addEventListener('input', e => { if (audio.duration) audio.currentTime = (e.target.value / 100) * audio.duration; });
   $('#ag-vol')?.addEventListener('input', e => { audio.volume = e.target.value / 100; });
-  audio.addEventListener('ended', () => { if (queue.length > 1) playAt((index + 1) % queue.length); else setPlayIcon(); });
   audio.volume = 0.8;
   renderQueue();
 })();
