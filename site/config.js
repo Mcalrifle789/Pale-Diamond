@@ -3,7 +3,7 @@
 window.PD_CONFIG = {
   /* Backend base URL — deployed on Vercel (single-function API).
      Same-origin when served by Vercel; the Pages site points here. */
-  apiBase: 'https://pale-diamond-deploy.vercel.app',
+  apiBase: 'https://pale-diamond.vercel.app',
 
   /* Ad networks. Leave empty to show house creatives; fill in to serve live ads. */
   ads: {
