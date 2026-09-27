@@ -89,6 +89,11 @@ function dueInDays(iso) {
   if (d === 1) return 'tomorrow';
   return `in ${d} days`;
 }
+function openModal(id) { const m = $(id); m.classList.add('open'); m.setAttribute('aria-hidden', 'false'); }
+function closeModal(m) { m.classList.remove('open'); m.setAttribute('aria-hidden', 'true'); }
+$$('[data-close-modal]').forEach(b => b.addEventListener('click', () => closeModal(b.closest('.modal-backdrop'))));
+$$('.modal-backdrop').forEach(bd => bd.addEventListener('click', e => { if (e.target === bd) closeModal(bd); }));
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $$('.modal-backdrop.open').forEach(closeModal); });
 function openAccountModal() {
   const user = currentUser();
   if (!user) { switchView('settings'); return; }
