@@ -47,7 +47,119 @@ function refreshAccountUI() {
     ? `${user.tier} plan · member since ${new Date(user.created).toLocaleDateString()} · ${user.credits} credits used`
     : 'Not signed in — you are browsing as a guest.';
 }
-$('#ag-account')?.addEventListener('click', () => switchView('settings'));
+$('#ag-account')?.addEventListener('click', e => { e.stopPropagation(); toggleProfileMenu(e.currentTarget); });
+
+/* ---------- profile dropdown (same four options as the site) ---------- */
+const profileMenu = $('#profile-menu');
+function closeProfileMenu() { if (profileMenu) profileMenu.hidden = true; }
+function toggleProfileMenu(anchorBtn) {
+  if (!profileMenu) return;
+  if (!profileMenu.hidden) { closeProfileMenu(); return; }
+  const r = anchorBtn.getBoundingClientRect();
+  profileMenu.style.top = `${Math.max(12, r.top - 10 - 180)}px`;
+  profileMenu.style.right = `${Math.max(12, window.innerWidth - r.right)}px`;
+  profileMenu.style.left = 'auto';
+  profileMenu.hidden = false;
+}
+document.addEventListener('click', e => {
+  if (!profileMenu || profileMenu.hidden) return;
+  if (e.target.closest('#profile-menu') || e.target.closest('#ag-account')) return;
+  closeProfileMenu();
+});
+$$('[data-menu-action]').forEach(b => b.addEventListener('click', () => {
+  const action = b.dataset.menuAction;
+  closeProfileMenu();
+  if (action === 'info') openAccountModal();
+  else if (action === 'settings') switchView('settings');
+  else if (action === 'switch') openSwitchScreen();
+  else if (action === 'signout') doSignOut();
+}));
+
+function fmtDate(iso) { return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); }
+function ageString(iso) {
+  const days = Math.max(0, Math.floor((Date.now() - new Date(iso)) / 864e5));
+  if (days < 1) return 'New today';
+  if (days < 30) return `${days} day${days > 1 ? 's' : ''}`;
+  if (days < 365) return `${Math.floor(days / 30)} month${days >= 60 ? 's' : ''}`;
+  return `${(days / 365).toFixed(1)} years`;
+}
+function dueInDays(iso) {
+  const d = Math.ceil((new Date(iso) - Date.now()) / 864e5);
+  if (d <= 0) return 'today';
+  if (d === 1) return 'tomorrow';
+  return `in ${d} days`;
+}
+function openAccountModal() {
+  const user = currentUser();
+  if (!user) { switchView('settings'); return; }
+  $('#agp-avatar').textContent = user.email[0].toUpperCase();
+  $('#agp-name').textContent = user.email.split('@')[0];
+  $('#agp-email').textContent = user.email;
+  $('#agp-tier').textContent = user.tier;
+  $('#agp-created').textContent = fmtDate(user.created);
+  $('#agp-age').textContent = ageString(user.created);
+  $('#agp-credits').textContent = user.credits;
+  $('#agp-sub-since').textContent = user.subscribedAt ? fmtDate(user.subscribedAt) : 'not yet';
+  $('#agp-sub-next').textContent = user.nextDue
+    ? `${fmtDate(user.nextDue)} (${dueInDays(user.nextDue)})`
+    : (user.tier !== 'Free' ? '—' : 'free plan');
+  openModal('#ag-account-modal');
+}
+function openSwitchScreen() {
+  const user = currentUser();
+  if (!user) { switchView('settings'); showToast('Sign in first — create your facet on the main site.'); return; }
+  const list = $('#ag-switch-list');
+  const others = Object.values(accounts()).filter(a => a.email !== user.email);
+  list.innerHTML = others.length
+    ? others.map(a => `
+      <div class="switch-row" data-switch-to="${escapeHtml(a.email)}">
+        <span class="switch-avatar">${a.email[0].toUpperCase()}</span>
+        <div><strong>${escapeHtml(a.email)}</strong><span>${fmtDate(a.created)} · ${a.tier || 'Free'}</span></div>
+        <span class="switch-go">›</span>
+      </div>`).join('')
+    : '<p class="ag-empty">No other accounts on this device. Create one from the main site.</p>';
+  openModal('#ag-switch-modal');
+  $$('#ag-switch-list [data-switch-to]').forEach(row => row.addEventListener('click', () => {
+    const email = row.dataset.switchTo;
+    store.set('pd_session', email);
+    store.set('pd_auth_token', null);   // server session belongs to the previous account
+    closeModal($('#ag-switch-modal'));
+    refreshAccountUI();
+    showToast(`Switched to ${email.split('@')[0]}.`);
+  }));
+}
+function doSignOut() {
+  if (store.get('pd_auth_token', null)) {
+    apiFetch('auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${store.get('pd_auth_token', '')}` } }).catch(() => {});
+    store.set('pd_auth_token', null);
+  }
+  store.set('pd_session', null);
+  closeProfileMenu();
+  $$('.modal-backdrop.open').forEach(closeModal);
+  refreshAccountUI();
+  showToast('Signed out.');
+}
+
+/* Boot: refresh the signed-in user from the server database. */
+(async function refreshServerUser() {
+  const token = store.get('pd_auth_token', null);
+  const email = currentEmail();
+  if (!token || !email || !backendConfigured()) return;
+  try {
+    const u = await apiFetch('auth/me', { headers: { Authorization: `Bearer ${token}` } });
+    const acc = accounts();
+    acc[email] = {
+      ...(acc[email] || { email, apiKey: 'pdk_' + Math.random().toString(36).slice(2, 10).toUpperCase() }),
+      email,
+      tier: u.plan || acc[email]?.tier || 'Free',
+      credits: u.credits ?? acc[email]?.credits ?? 0,
+      subscribedAt: u.subscribedAt || acc[email]?.subscribedAt || null,
+      nextDue: u.nextDue || acc[email]?.nextDue || null,
+    };
+    saveAccounts(acc);
+    refreshAccountUI();
+  } catch (err) { /* offline or expired token — local state stands */ }
+})();
 
 /* ---------- theme ---------- */
 function applyTheme(theme) {

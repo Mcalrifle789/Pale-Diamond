@@ -26,6 +26,10 @@ you click the agent picture in section 04):
 - Live weather via Open-Meteo — ask "weather in Tokyo"
 - Music player: persistent controls, queue management, search, responsive
 - Conversations, analytics, packages, templates, settings — all local-first
+- Account menu (profile click): Account Info, Settings, Switch Accounts, Sign
+  Out. Switching lists the other accounts saved on the device — no forced
+  logout. Account Info shows account age, plan, subscription start date and
+  the next payment due date
 
 ## Run locally
 
@@ -49,7 +53,23 @@ The `api/` folder is the serverless backend (deploy the repo to Vercel):
 | `GET  /api/models`| OpenRouter catalog grouped into provider sections      |
 | `POST /api/image` | Image generation via image-capable models             |
 | `POST /api/checkout` | Stripe Checkout (create) + verification (verify)   |
+| `POST /api/auth/register` | Create an account in the database              |
+| `POST /api/auth/login` | Sign in (bearer session token)                   |
+| `GET  /api/auth/me` | Session -> account (plan, subscription dates)      |
+| `POST /api/auth/logout` | Revoke the session                             |
+| `POST /api/billing/record` | Persist subscription start + next due date   |
 | `GET  /api/health`| Status + which services are configured                |
+
+### Database
+
+Accounts, sessions and subscription dates live in a real database:
+
+1. **Neon (cloud)** — set `DATABASE_URL` to your Neon Postgres connection
+   string and everything persists server-side. Create one at neon.tech.
+2. **External hard drive (local)** — without `DATABASE_URL`, the backend uses
+   SQLite, placed automatically on the first writable external/secondary drive
+   (e.g. `D:\PaleDiamondData\pale_diamond.db`) — the drive is the new database
+   location. Override with `PD_DB_PATH`.
 
 One function hosts everything on one origin (`api/index.py`, wired via
 rewrites in `vercel.json`). Run it locally the same way:
@@ -68,8 +88,10 @@ Then set the backend URL in Agent → Settings (or `site/config.js` → `apiBase
 | `OPENROUTER_API_KEY` | The private Pale Diamond key — never exposed to the browser |
 | `STRIPE_SECRET_KEY`  | Live Stripe secret key — prices are auto-provisioned with lookup keys on first use |
 | `PUBLIC_URL`         | Deployed site origin (Stripe redirects + CORS) |
+| `DATABASE_URL`       | Optional — Neon Postgres for real server-side accounts |
+| `PD_DB_PATH`         | Optional — explicit SQLite location (defaults to an external drive) |
 
-Optional: `PD_DEFAULT_MODEL`, `PD_IMAGE_MAX_TOKENS`.
+Optional: `PD_DEFAULT_MODEL`, `PD_IMAGE_MAX_TOKENS`, `PD_CHAT_MAX_TOKENS`.
 
 ### Secrets
 

@@ -31,6 +31,7 @@ async function apiFetch(path, options = {}) {
   if (!res.ok) throw new Error(`API ${res.status}`);
   return res.json();
 }
+function backendConfigured() { return !!apiBase() || !location.origin.includes('github.io'); }
 
 /* ============ INTRO: logo-gem spin + shine + vortex logo ============ */
 (function intro() {
@@ -96,6 +97,7 @@ function makeKey() {
   const seg = () => Math.random().toString(36).slice(2, 6).toUpperCase();
   return `pdk_${seg()}${seg()}_${seg()}${seg()}`;
 }
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
 function refreshAuthUI() {
   const user = currentUser();
@@ -139,27 +141,167 @@ function openAuth(mode = 'signup') {
 $$('[data-open-auth]').forEach(b => b.addEventListener('click', () => openAuth(b.dataset.openAuth)));
 $('#modal-switch-button').addEventListener('click', () => openAuth(authMode === 'signup' ? 'signin' : 'signup'));
 
-$('#auth-form').addEventListener('submit', e => {
+$('#auth-form').addEventListener('submit', async e => {
   e.preventDefault();
   const data = new FormData(e.target);
   const email = String(data.get('email')).trim().toLowerCase();
   const password = String(data.get('password'));
-  const acc = accounts();
+  e.target.reset();
+
   if (authMode === 'signup') {
+    // Real database first (backend on Vercel); local fallback when offline.
+    try {
+      if (backendConfigured()) {
+        const res = await apiFetch('auth/register', { method: 'POST', body: JSON.stringify({ email, password }) });
+        saveServerAccount(email, password, res.token, res.user);
+        store.set('pd_session', email);
+        showToast('Your private facet is ready — saved to the Pale Diamond database.');
+        closeModal(authModal);
+        refreshAuthUI();
+        return;
+      }
+    } catch (err) {
+      if (String(err.message).includes('409')) return showToast('That account already exists — try signing in.');
+      // backend unreachable → fall through to local demo account
+    }
+    const acc = accounts();
     if (acc[email]) return showToast('That account already exists — try signing in.');
     acc[email] = { email, password, created: new Date().toISOString(), tier: 'Free', credits: 0, apiKey: makeKey(), models: ['Nano Banana Pro', 'Seedance 2.5'] };
     saveAccounts(acc);
     store.set('pd_session', email);
     showToast('Your private facet is ready. A hidden API key was issued.');
+    closeModal(authModal);
+    refreshAuthUI();
   } else {
+    try {
+      if (backendConfigured()) {
+        const res = await apiFetch('auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+        saveServerAccount(email, password, res.token, res.user);
+        store.set('pd_session', email);
+        showToast(`Welcome back, ${email.split('@')[0]}.`);
+        closeModal(authModal);
+        refreshAuthUI();
+        return;
+      }
+    } catch (err) {
+      if (String(err.message).includes('401')) return showToast('Email or password not recognized.');
+      // backend unreachable → local login below
+    }
+    const acc = accounts();
     if (!acc[email] || acc[email].password !== password) return showToast('Email or password not recognized.');
     store.set('pd_session', email);
     showToast(`Welcome back, ${email.split('@')[0]}.`);
+    closeModal(authModal);
+    refreshAuthUI();
   }
-  e.target.reset();
-  closeModal(authModal);
-  refreshAuthUI();
 });
+
+/* Server-backed account: keep the session token + mirror the profile locally
+   so the Switch Accounts screen and offline UI keep working. */
+function saveServerAccount(email, password, token, u) {
+  store.set('pd_auth_token', token);
+  const acc = accounts();
+  acc[email] = {
+    ...(acc[email] || { apiKey: makeKey(), models: ['Nano Banana Pro', 'Seedance 2.5'] }),
+    email,
+    password,
+    created: u.createdAt || acc[email]?.created || new Date().toISOString(),
+    tier: u.plan || 'Free',
+    credits: u.credits ?? 0,
+    subscribedAt: u.subscribedAt || acc[email]?.subscribedAt || null,
+    nextDue: u.nextDue || acc[email]?.nextDue || null,
+  };
+  saveAccounts(acc);
+}
+
+/* Boot: refresh the signed-in user from the server (tier, subscription dates). */
+(async function refreshServerUser() {
+  const token = store.get('pd_auth_token', null);
+  const email = currentEmail();
+  if (!token || !email || !backendConfigured()) return;
+  try {
+    const u = await apiFetch('auth/me', { headers: { Authorization: `Bearer ${token}` } });
+    const acc = accounts();
+    acc[email] = {
+      ...(acc[email] || { email, apiKey: makeKey() }),
+      email,
+      tier: u.plan || acc[email]?.tier || 'Free',
+      credits: u.credits ?? acc[email]?.credits ?? 0,
+      subscribedAt: u.subscribedAt || acc[email]?.subscribedAt || null,
+      nextDue: u.nextDue || acc[email]?.nextDue || null,
+    };
+    saveAccounts(acc);
+    refreshAuthUI();
+  } catch (err) { /* offline or expired token — local state stands */ }
+})();
+
+/* ============ PROFILE DROPDOWN MENU ============ */
+const profileMenu = $('#profile-menu');
+function closeProfileMenu() { if (profileMenu) { profileMenu.hidden = true; profileMenu.removeAttribute('data-anchor'); } }
+function openProfileMenu(anchorBtn) {
+  if (!profileMenu) return;
+  const r = anchorBtn.getBoundingClientRect();
+  profileMenu.style.top = `${r.bottom + 10}px`;
+  profileMenu.style.right = `${Math.max(12, window.innerWidth - r.right)}px`;
+  profileMenu.style.left = 'auto';
+  profileMenu.hidden = false;
+}
+function toggleProfileMenu(anchorBtn) {
+  if (!profileMenu || profileMenu.hidden) openProfileMenu(anchorBtn);
+  else closeProfileMenu();
+}
+document.addEventListener('click', e => {
+  if (!profileMenu || profileMenu.hidden) return;
+  if (e.target.closest('#profile-menu') || e.target.closest('#avatar-button') || e.target.closest('#agent-account')) return;
+  closeProfileMenu();
+});
+$('#avatar-button')?.addEventListener('click', e => { e.stopPropagation(); toggleProfileMenu(e.currentTarget); });
+$('#agent-account')?.addEventListener('click', e => { e.stopPropagation(); toggleProfileMenu(e.currentTarget); });
+$$('[data-menu-action]').forEach(b => b.addEventListener('click', () => {
+  const action = b.dataset.menuAction;
+  closeProfileMenu();
+  if (action === 'info') openProfile();
+  else if (action === 'settings') { openProfile(); switchProfileTab('settings'); }
+  else if (action === 'switch') openSwitchScreen();
+  else if (action === 'signout') doSignOut();
+}));
+
+function doSignOut() {
+  if (store.get('pd_auth_token', null)) {
+    apiFetch('auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${store.get('pd_auth_token', '')}` } })
+      .catch(() => {});
+    store.set('pd_auth_token', null);
+  }
+  store.set('pd_session', null);
+  closeProfileMenu();
+  $$('.modal-backdrop.open').forEach(closeModal);
+  refreshAuthUI();
+  showToast('Signed out.');
+}
+
+/* ============ SWITCH ACCOUNTS SCREEN ============ */
+function openSwitchScreen() {
+  const user = currentUser();
+  if (!user) return openAuth('signin');
+  const list = $('#switch-list');
+  const others = Object.values(accounts()).filter(a => a.email !== user.email);
+  list.innerHTML = others.length
+    ? others.map(a => `
+      <div class="switch-row" data-switch-to="${escapeHtml(a.email)}">
+        <span class="switch-avatar">${a.email[0].toUpperCase()}</span>
+        <div><strong>${escapeHtml(a.email)}</strong><span>${fmtDate(a.created)} · ${a.tier || 'Free'}</span></div>
+        <span class="switch-go">›</span>
+      </div>`).join('')
+    : '<p class="ag-empty" style="font-family:\'DM Mono\',monospace;color:var(--muted);font-size:11px">No other accounts on this device. Create one from the sign-in screen.</p>';
+  openModal('#switch-modal');
+  $$('#switch-list [data-switch-to]').forEach(row => row.addEventListener('click', () => {
+    const email = row.dataset.switchTo;
+    store.set('pd_session', email);
+    closeModal($('#switch-modal'));
+    refreshAuthUI();
+    showToast(`Switched to ${email.split('@')[0]}.`);
+  }));
+}
 
 /* ============ PROFILE + SETTINGS ============ */
 function fmtDate(iso) { return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); }
@@ -180,6 +322,11 @@ function openProfile() {
   $('#stat-created').textContent = fmtDate(user.created);
   $('#stat-age').textContent = ageString(user.created);
   $('#stat-credits').textContent = user.credits;
+  // subscription payment dates
+  $('#stat-sub-since').textContent = user.subscribedAt ? fmtDate(user.subscribedAt) : 'not yet';
+  $('#stat-sub-next').textContent = user.nextDue
+    ? `${fmtDate(user.nextDue)} (${dueInDays(user.nextDue)})`
+    : (user.tier !== 'Free' ? '—' : 'free plan');
   // credit timeline (deterministic-ish demo based on account)
   const bars = $('#timeline-bars'); bars.innerHTML = '';
   for (let i = 0; i < 16; i++) {
@@ -189,8 +336,35 @@ function openProfile() {
   }
   openModal('#profile-modal');
 }
-$('#avatar-button')?.addEventListener('click', openProfile);
-$('#agent-account')?.addEventListener('click', openProfile);
+function dueInDays(iso) {
+  const d = Math.ceil((new Date(iso) - Date.now()) / 864e5);
+  if (d <= 0) return 'today';
+  if (d === 1) return 'tomorrow';
+  return `in ${d} days`;
+}
+function recordSubscription(user, tier, interval) {
+  const now = new Date();
+  const a = accounts();
+  const acc = a[user.email];
+  if (!acc) return;
+  acc.tier = tier;
+  if (!acc.subscribedAt) acc.subscribedAt = now.toISOString();   // first payment date sticks
+  const due = new Date(acc.subscribedAt);
+  if (interval === 'yearly') due.setFullYear(due.getFullYear() + 1);
+  else due.setMonth(due.getMonth() + 1);
+  acc.nextDue = due.toISOString();
+  acc.billing = interval;
+  saveAccounts(a);
+  // Mirror into the server database when signed in through it.
+  const token = store.get('pd_auth_token', null);
+  if (token && backendConfigured()) {
+    apiFetch('billing/record', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ plan: tier, interval }),
+    }).catch(() => {});
+  }
+}
 $$('[data-open-settings]').forEach(b => b.addEventListener('click', () => { openProfile(); switchProfileTab('settings'); }));
 
 function switchProfileTab(tab) {
@@ -213,8 +387,8 @@ $('#add-models')?.addEventListener('click', () => {
   const pick = prompt('Add a model (e.g. Sora 2, Google Veo 3.1, GPT Image 2, Kling 3.0):');
   if (pick) { const a = accounts(); a[user.email].models = [...new Set([...(a[user.email].models || []), pick.trim()])]; saveAccounts(a); showToast(`Added ${pick.trim()} to your models.`); }
 });
-$('#switch-account')?.addEventListener('click', () => { closeModal($('#profile-modal')); openAuth('signin'); });
-$('#sign-out')?.addEventListener('click', () => { store.set('pd_session', null); closeModal($('#profile-modal')); refreshAuthUI(); showToast('Signed out.'); });
+$('#switch-account')?.addEventListener('click', () => { closeModal($('#profile-modal')); openSwitchScreen(); });
+$('#sign-out')?.addEventListener('click', doSignOut);
 $('#delete-account')?.addEventListener('click', () => {
   const user = currentUser(); if (!user) return;
   if (confirm('Permanently delete this account? This cannot be undone.')) {
@@ -286,7 +460,7 @@ async function startCheckout(plan) {
     throw new Error(data.error || 'no url');
   } catch (err) {
     // Demo fallback: no backend / Stripe configured yet
-    if (user) { const a = accounts(); a[user.email].tier = plan; saveAccounts(a); showToast(`${plan} is now your plan. (Demo mode — connect Stripe to bill.)`); }
+    if (user) { const a = accounts(); a[user.email].tier = plan; saveAccounts(a); recordSubscription(user, plan, billing); showToast(`${plan} is now your plan. (Demo mode — connect Stripe to bill.)`); }
     else showToast(`${plan} selected — sign in to continue. (Demo mode)`);
   }
 }
@@ -306,8 +480,8 @@ async function verifyCheckoutOnLoad() {
     if (data.status === 'paid') {
       const a = accounts();
       a[user.email].tier = data.plan;
-      a[user.email].billing = data.interval;
       saveAccounts(a);
+      recordSubscription(user, data.plan, data.interval);
       const split = data.split;
       showToast(`${data.plan} plan active — payment split 50/50 (owner $${(split.owner / 100).toFixed(2)} / API funding $${(split.apiFunding / 100).toFixed(2)}).`);
       refreshAuthUI();

@@ -3,31 +3,48 @@
 All endpoints live in this one function; vercel.json rewrites /api/* here so
 everything is served from one origin, exactly like production:
 
-    POST /api/chat      OpenRouter relay (streaming SSE or JSON, page reading)
-    GET  /api/models    OpenRouter catalog grouped into provider sections
-    POST /api/image     image generation via image-capable models
-    POST /api/checkout  Stripe Checkout create + verify (auto-priced)
-    GET  /api/health    status
+    POST /api/chat           OpenRouter relay (streaming SSE or JSON, page reading)
+    GET  /api/models         OpenRouter catalog grouped into provider sections
+    POST /api/image          image generation via image-capable models
+    POST /api/checkout       Stripe Checkout create + verify (auto-priced)
+    POST /api/auth/register  create an account in the database
+    POST /api/auth/login     sign in
+    GET  /api/auth/me        session -> account
+    POST /api/auth/logout    revoke session
+    POST /api/billing/record persist subscription dates
+    GET  /api/health         status
+
+Database (in order of preference):
+    DATABASE_URL    Neon Postgres (cloud) — used whenever present
+    PD_DB_PATH      SQLite file path — set this to an external hard drive
+                    location to make that drive the database location
+    (local default: first writable secondary drive -> /PaleDiamondData/)
 
 Secrets live ONLY in the environment:
     OPENROUTER_API_KEY   private Pale Diamond key for OpenRouter
-    STRIPE_SECRET_KEY    live Stripe secret key
+    STRIPE_SECRET_KEY    Stripe secret key
     PUBLIC_URL           deployed site origin (redirects + referer)
-    PD_DEFAULT_MODEL     optional default model id
-    PD_IMAGE_MAX_TOKENS  optional token cap for image requests
+    PD_DEFAULT_MODEL, PD_IMAGE_MAX_TOKENS, PD_CHAT_MAX_TOKENS  optional
 
-Nothing here ever returns a key to a client.
+Nothing here ever returns a key or password to a client.
 """
 
 from __future__ import annotations
 
 import base64
+import hashlib
+import json
 import os
 import re
+import secrets
+import sqlite3
+import tempfile
+import time
+from datetime import datetime, timedelta, timezone
 from html import unescape
 
 import httpx
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
@@ -35,6 +52,10 @@ from pydantic import BaseModel
 OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 DEFAULT_MODEL = os.environ.get("PD_DEFAULT_MODEL", "openai/gpt-4o-mini")
 IMAGE_MAX_TOKENS = int(os.environ.get("PD_IMAGE_MAX_TOKENS", "6000"))
+# OpenRouter pre-authorizes max_tokens against the account balance (402 when
+# the default 16K+ exceeds what the key can afford). Cap chat output; raise
+# PD_CHAT_MAX_TOKENS when the balance grows.
+CHAT_MAX_TOKENS = int(os.environ.get("PD_CHAT_MAX_TOKENS", "4000"))
 FALLBACK_IMAGE_MODEL = "google/gemini-2.5-flash-image-preview"
 
 PLAN_PRICES = {"Port": 999, "Plus": 2000, "Pro": 4500, "Max": 11500}  # cents/month
@@ -211,6 +232,7 @@ async def chat(req: ChatRequest):
         "model": req.model or DEFAULT_MODEL,
         "messages": messages,
         "stream": bool(req.stream),
+        "max_tokens": CHAT_MAX_TOKENS,
     }
     headers = openrouter_headers()
 
@@ -446,3 +468,227 @@ def checkout(req: CheckoutRequest):
 @app.get("/")
 def root():
     return health()
+
+
+# ===========================================================================
+# DATABASE — Neon Postgres (DATABASE_URL) or SQLite on the external drive
+# ===========================================================================
+#
+# Location policy:
+#   1. DATABASE_URL (Neon cloud Postgres) wins whenever present.
+#   2. Otherwise SQLite, placed on an external/secondary hard drive:
+#      PD_DB_PATH if set, else the first writable drive letter after C:
+#      creates /PaleDiamondData/pale_diamond.db — the drive becomes the
+#      new database location for the local stack.
+
+def _sqlite_path() -> str:
+    env = os.environ.get("PD_DB_PATH")
+    if env:
+        return env
+    if os.environ.get("VERCEL"):
+        return "/tmp/pale_diamond.db"
+    for letter in "DEFGHIJKLMNOPQRSTUVWXYZ":
+        drive_root = f"{letter}:/"
+        if not os.path.isdir(drive_root):
+            continue
+        data_dir = f"{drive_root}PaleDiamondData"
+        try:
+            os.makedirs(data_dir, exist_ok=True)
+            probe = os.path.join(data_dir, ".write-test")
+            with open(probe, "w") as f:
+                f.write("ok")
+            os.remove(probe)
+            return os.path.join(data_dir, "pale_diamond.db")
+        except OSError:
+            continue
+    return os.path.join(tempfile.gettempdir(), "pale_diamond.db")
+
+
+_SCHEMA = [
+    """CREATE TABLE IF NOT EXISTS users (
+        email TEXT PRIMARY KEY,
+        password_hash TEXT NOT NULL,
+        plan TEXT NOT NULL DEFAULT 'free',
+        credits INTEGER NOT NULL DEFAULT 0,
+        subscribed_at TEXT,
+        next_due TEXT,
+        created_at TEXT NOT NULL)""",
+    """CREATE TABLE IF NOT EXISTS sessions (
+        token TEXT PRIMARY KEY,
+        email TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        expires_at TEXT NOT NULL)""",
+]
+
+_DB_READY = False
+
+
+def db_execute(sql: str, params: tuple = (), fetch: str = "none"):
+    """Run a statement against Postgres or SQLite, returning rows as dicts."""
+    global _DB_READY
+    url = os.environ.get("DATABASE_URL")
+    if url:
+        import psycopg2
+        import psycopg2.extras
+        conn = psycopg2.connect(url, sslmode="require")
+        try:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute(sql.replace("?", "%s"), params)   # dialect: %s for Postgres
+                rows = [dict(r) for r in cur.fetchall()] if cur.description and fetch != "none" else []
+            conn.commit()
+            return rows
+        finally:
+            conn.close()
+    conn = sqlite3.connect(_sqlite_path(), timeout=10)
+    conn.row_factory = sqlite3.Row
+    try:
+        cur = conn.execute(sql, params)
+        rows = [dict(r) for r in cur.fetchall()] if fetch != "none" else []
+        conn.commit()
+        return rows
+    finally:
+        conn.close()
+
+
+def _add_months(dt: datetime, months: int) -> datetime:
+    """Add months, clamping end-of-month overflow (Jan 31 -> Feb 28)."""
+    index = dt.month - 1 + months
+    year = dt.year + index // 12
+    month = index % 12 + 1
+    leap = year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
+    days_in = [31, 29 if leap else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]
+    return dt.replace(year=year, month=month, day=min(dt.day, days_in))
+
+
+def db_init() -> None:
+    global _DB_READY
+    if _DB_READY:
+        return
+    for stmt in _SCHEMA:
+        db_execute(stmt)
+    _DB_READY = True
+
+
+# --- password + session security (mirrors src/python/security.py) ----------
+
+def hash_password(password: str) -> str:
+    salt = secrets.token_hex(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 120_000).hex()
+    return f"{salt}${digest}"
+
+
+def verify_password(password: str, stored: str) -> bool:
+    try:
+        salt, digest = stored.split("$", 1)
+    except ValueError:
+        return False
+    check = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 120_000).hex()
+    return secrets.compare_digest(check, digest)
+
+
+def _new_session(email: str) -> str:
+    token = secrets.token_urlsafe(32)
+    expires = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+    db_execute(
+        "INSERT INTO sessions (token, email, created_at, expires_at) VALUES (?, ?, ?, ?)",
+        (token, email, datetime.now(timezone.utc).isoformat(), expires),
+    )
+    return token
+
+
+def _user_for_token(authorization: str | None) -> dict:
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Sign in first.")
+    token = authorization.split(" ", 1)[1].strip()
+    rows = db_execute("SELECT email, expires_at FROM sessions WHERE token = ?", (token,), fetch="all")
+    if not rows or rows[0]["expires_at"] < datetime.now(timezone.utc).isoformat():
+        raise HTTPException(status_code=401, detail="Session expired. Sign in again.")
+    user = db_execute("SELECT * FROM users WHERE email = ?", (rows[0]["email"],), fetch="all")
+    if not user:
+        raise HTTPException(status_code=401, detail="Session expired. Sign in again.")
+    return user[0]
+
+
+def _user_dict(u: dict) -> dict:
+    return {
+        "email": u["email"],
+        "plan": u.get("plan") or "free",
+        "credits": u.get("credits") or 0,
+        "createdAt": u.get("created_at"),
+        "subscribedAt": u.get("subscribed_at"),
+        "nextDue": u.get("next_due"),
+    }
+
+
+# --- auth endpoints ---------------------------------------------------------
+
+class Credentials(BaseModel):
+    email: str
+    password: str
+
+
+@app.post("/api/auth/register")
+def auth_register(creds: Credentials):
+    db_init()
+    email = creds.email.strip().lower()
+    if len(creds.password) < 8:
+        raise HTTPException(status_code=400, detail="Use at least 8 characters.")
+    if db_execute("SELECT email FROM users WHERE email = ?", (email,), fetch="all"):
+        raise HTTPException(status_code=409, detail="That email is already registered.")
+    now = datetime.now(timezone.utc).isoformat()
+    db_execute(
+        "INSERT INTO users (email, password_hash, plan, credits, created_at) VALUES (?, ?, ?, ?, ?)",
+        (email, hash_password(creds.password), "free", 0, now),
+    )
+    token = _new_session(email)
+    user = db_execute("SELECT * FROM users WHERE email = ?", (email,), fetch="all")[0]
+    return {"token": token, "user": _user_dict(user)}
+
+
+@app.post("/api/auth/login")
+def auth_login(creds: Credentials):
+    db_init()
+    email = creds.email.strip().lower()
+    rows = db_execute("SELECT * FROM users WHERE email = ?", (email,), fetch="all")
+    if not rows or not verify_password(creds.password, rows[0]["password_hash"]):
+        raise HTTPException(status_code=401, detail="Wrong email or password.")
+    token = _new_session(email)
+    return {"token": token, "user": _user_dict(rows[0])}
+
+
+@app.get("/api/auth/me")
+def auth_me(authorization: str | None = Header(default=None)):
+    db_init()
+    return _user_dict(_user_for_token(authorization))
+
+
+@app.post("/api/auth/logout")
+def auth_logout(authorization: str | None = Header(default=None)):
+    if authorization and authorization.lower().startswith("bearer "):
+        db_execute("DELETE FROM sessions WHERE token = ?", (authorization.split(" ", 1)[1].strip(),))
+    return {}
+
+
+# --- subscription dates ------------------------------------------------------
+
+class BillingRecord(BaseModel):
+    plan: str
+    interval: str = "monthly"
+
+
+@app.post("/api/billing/record")
+def billing_record(record: BillingRecord, authorization: str | None = Header(default=None)):
+    db_init()
+    user = _user_for_token(authorization)
+    email = user["email"]
+    now = datetime.now(timezone.utc)
+    # The first payment date sticks; every renewal pushes the next due date.
+    base = user.get("subscribed_at") or now.isoformat()
+    base_dt = datetime.fromisoformat(base)
+    next_due = _add_months(base_dt, 12) if record.interval == "yearly" else _add_months(base_dt, 1)
+    db_execute(
+        "UPDATE users SET plan = ?, subscribed_at = ?, next_due = ? WHERE email = ?",
+        (record.plan, base, next_due.isoformat(), email),
+    )
+    updated = db_execute("SELECT * FROM users WHERE email = ?", (email,), fetch="all")[0]
+    return {"user": _user_dict(updated)}

@@ -204,6 +204,8 @@
         <div class="stat glass"><span class="stat-label">MEMBER SINCE</span><strong id="stat-created">—</strong></div>
         <div class="stat glass"><span class="stat-label">ACCOUNT AGE</span><strong id="stat-age">—</strong></div>
         <div class="stat glass"><span class="stat-label">CREDITS USED</span><strong id="stat-credits">0</strong></div>
+        <div class="stat glass"><span class="stat-label">SUBSCRIBED SINCE</span><strong id="stat-sub-since">—</strong></div>
+        <div class="stat glass"><span class="stat-label">NEXT PAYMENT DUE</span><strong id="stat-sub-next">—</strong></div>
       </div>
       <div class="api-key-row glass"><span class="stat-label">PRIVATE API KEY</span><code id="stat-key">•••• •••• •••• hidden</code><span class="key-hint">issued · never shown</span></div>
       <div class="timeline"><span class="stat-label">CREDIT TIMELINE</span><div class="timeline-bars" id="timeline-bars"></div></div>
@@ -223,6 +225,17 @@
 
   <!-- ============ AD REQUEST MODAL ============ -->
   <div class="modal-backdrop" id="ads-info-modal" aria-hidden="true"><div class="modal-card glass ads-info-card"><button class="modal-close" data-close-modal aria-label="Close">×</button><div class="modal-kicker">ADVERTISING / MEDIA</div><h2>Put your brand<br /><em>in the light.</em></h2><p>Two premium placements on Pale Diamond. Companies and individual users can request a box; Media.net and Google AdSense then deliver and rotate the ad automatically.</p><div class="ads-info-rates"><div class="ads-rate glass"><i class="rate-dot rate-redbottom"></i><div><strong>Red-Bottom box</strong><span>$340 / month</span></div><p>Feature placement on the landing page.</p></div><div class="ads-rate glass"><i class="rate-dot rate-blue"></i><div><strong>Blue-Ad box</strong><span>$400 / month</span></div><p>Premium slot with top billing in the rotation.</p></div></div><form id="ads-request-form"><label>Company or individual name<input type="text" name="name" placeholder="Acme Studio" required /></label><label>Contact email<input type="email" name="email" placeholder="you@company.com" required /></label><label>Preferred box<select name="box" required><option value="Red-Bottom — $340/mo">Red-Bottom — $340/mo</option><option value="Blue-Ad — $400/mo">Blue-Ad — $400/mo</option></select></label><label>Network you'll serve through<select name="network"><option>Google AdSense</option><option>Media.net</option></select></label><button class="primary-button full magnetic" type="submit">Send request <span>↗</span></button></form><p class="modal-note">After your request is approved you'll receive the placement agreement and tag instructions. Your network tag is then mounted directly into the box.</p></div></div>
+
+  <!-- ============ PROFILE DROPDOWN MENU ============ -->
+  <div class="profile-menu glass" id="profile-menu" hidden>
+    <button data-menu-action="info"><i>◆</i> Account Info</button>
+    <button data-menu-action="settings"><i>⚙</i> Settings</button>
+    <button data-menu-action="switch"><i>⇄</i> Switch Accounts</button>
+    <button data-menu-action="signout" class="menu-signout"><i>↩</i> Sign Out</button>
+  </div>
+
+  <!-- ============ SWITCH ACCOUNTS SCREEN ============ -->
+  <div class="modal-backdrop" id="switch-modal" aria-hidden="true"><div class="modal-card switch-card glass"><button class="modal-close" data-close-modal aria-label="Close">×</button><div class="modal-kicker">ACCOUNTS / THIS DEVICE</div><h2>Switch<br /><em>facets.</em></h2><p class="switch-sub">Pick another account saved on this computer — you won't be signed out of your work.</p><div class="switch-list" id="switch-list"></div></div></div>
 
   <div class="toast" role="status" aria-live="polite"></div>
   <script src="config.js"></script>

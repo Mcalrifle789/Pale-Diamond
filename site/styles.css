@@ -493,3 +493,32 @@ html[data-theme="light"] .modal-card select{background:rgba(255,255,255,.7)}
 @media (max-width:560px){
   .ads-info-rates{flex-direction:column}
 }
+
+/* ============================================================
+   PROMPT 3 — profile dropdown, switch accounts, subscription stats
+   ============================================================ */
+
+/* ---------- profile dropdown menu ---------- */
+.profile-menu{position:fixed;z-index:130;min-width:220px;border-radius:14px;padding:8px;display:flex;flex-direction:column;gap:2px;animation:menu-in .25s ease}
+.profile-menu[hidden]{display:none}
+@keyframes menu-in{from{opacity:0;transform:translateY(-8px) scale(.97)}to{opacity:1;transform:none}}
+.profile-menu button{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:9px;font-size:13px;color:var(--soft);text-align:left;transition:.18s}
+.profile-menu button i{font-style:normal;width:18px;text-align:center;color:var(--accent)}
+.profile-menu button:hover{color:var(--ink);background:rgba(140,170,255,.1)}
+.profile-menu button.menu-signout:hover{background:rgba(255,90,90,.1)}
+.profile-menu button.menu-signout:hover i{color:#ff9a9a}
+.profile-menu .menu-divider{height:1px;background:var(--line);margin:4px 8px}
+
+/* ---------- switch accounts screen ---------- */
+.switch-card{max-width:480px}
+.switch-sub{color:var(--muted);font-size:12px;line-height:1.7;margin:10px 0 18px}
+.switch-list{display:flex;flex-direction:column;gap:10px;max-height:340px;overflow:auto}
+.switch-row{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1px solid var(--glass-brd);border-radius:12px;transition:.2s;cursor:pointer;background:rgba(10,14,26,.35)}
+.switch-row:hover{border-color:var(--accent);transform:translateY(-1px)}
+.switch-row .switch-avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(140deg,#2b3a63,#131a2c);display:grid;place-items:center;font-weight:700;font-size:14px;color:#dbe6ff;flex:none}
+.switch-row div{min-width:0;flex:1}
+.switch-row strong{display:block;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.switch-row span{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:.12em;color:var(--muted)}
+.switch-row .switch-tag{font-family:'DM Mono',monospace;font-size:7.5px;letter-spacing:.14em;border:1px solid var(--glass-brd);border-radius:4px;padding:3px 7px;color:var(--soft)}
+.switch-row.current{cursor:default;box-shadow:inset 0 0 0 1px var(--accent)}
+.switch-row .switch-go{color:var(--accent);font-size:15px}
