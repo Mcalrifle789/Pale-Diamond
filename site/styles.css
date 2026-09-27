@@ -23,6 +23,7 @@ html[data-theme="light"]{
   --btn-ink:#f5f8ff; --btn-bg:#1b2740;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html{scroll-behavior:smooth}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 body{margin:0;background:var(--night);color:var(--ink);font-family:'Manrope',Arial,'Arial CE',sans-serif;line-height:1.5;overflow-x:hidden;transition:background .5s,color .5s}
